@@ -11,27 +11,22 @@ interface UserProfile {
 }
 
 export function Header() {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   useClickOutside(dropdownRef, () => setShowDropdown(false));
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const accessToken = localStorage.getItem('access_token');
-      if (accessToken) {
-        try {
-          const profile = await getUserProfile(accessToken);
-          setUserProfile(profile);
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          handleLogout();
-        }
+    const profile = localStorage.getItem('user_profile');
+    if (profile) {
+      try {
+        setUserProfile(JSON.parse(profile));
+      } catch (error) {
+        console.error('Error parsing user profile:', error);
+        localStorage.removeItem('user_profile');
       }
-    };
-
-    checkAuth();
+    }
   }, []);
 
   const handleLogin = async () => {
