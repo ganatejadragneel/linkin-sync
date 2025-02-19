@@ -2,13 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Camera, Search, LogOut, ChevronDown } from 'lucide-react';
-import { initiateSpotifyLogin, getUserProfile } from '../utils/spotify-auth';
+import { initiateSpotifyLogin } from '../utils/spotify-auth';
 import { useClickOutside } from '../hooks/useClickOutside';
-
-interface UserProfile {
-  display_name?: string;
-  email?: string;
-}
 
 export function Header() {
   const [userProfile, setUserProfile] = useState<any>(null);

@@ -10,6 +10,7 @@ import { ChatOptions } from "./components/chat-options";
 import { GlobalChat } from "./components/global-chat";
 import { LyricChatbot } from "./components/lyric-chatbot";
 import { Callback } from "./components/callback";
+import { Toaster } from "./components/ui/toaster"
 
 function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -32,32 +33,35 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-24">
-      <Header />
-      <div className="flex flex-1">
-        <Sidebar 
-          activeSection={activeSection} 
-          onSectionChange={setActiveSection} 
+    <>
+      <div className="flex flex-col min-h-screen bg-background pb-24">
+        <Header />
+        <div className="flex flex-1">
+          <Sidebar 
+            activeSection={activeSection} 
+            onSectionChange={setActiveSection} 
+          />
+          <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
+            isChatOpen ? 'mr-64' : ''} ${isChatbotOpen ? 'mr-1/3' : ''
+          }`}>
+            {activeSection === 'featured' && <MainContent />}
+            {activeSection === 'about' && <About />}
+            {activeSection === 'artists' && <Artists />}
+            {activeSection === 'playlists' && <Playlists />}
+          </main>
+        </div>
+        <ChatOptions 
+          onToggleChat={toggleChat}
+          onToggleChatbot={toggleChatbot}
+          isChatOpen={isChatOpen}
+          isChatbotOpen={isChatbotOpen}
         />
-        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
-          isChatOpen ? 'mr-64' : ''} ${isChatbotOpen ? 'mr-1/3' : ''
-        }`}>
-          {activeSection === 'featured' && <MainContent />}
-          {activeSection === 'about' && <About />}
-          {activeSection === 'artists' && <Artists />}
-          {activeSection === 'playlists' && <Playlists />}
-        </main>
+        <PlayerBar />
+        <GlobalChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        <LyricChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
       </div>
-      <ChatOptions 
-        onToggleChat={toggleChat}
-        onToggleChatbot={toggleChatbot}
-        isChatOpen={isChatOpen}
-        isChatbotOpen={isChatbotOpen}
-      />
-      <PlayerBar />
-      <GlobalChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-      <LyricChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
-    </div>
+      <Toaster />
+    </>
   );
 }
 
