@@ -11,8 +11,10 @@ import { GlobalChat } from "./components/global-chat";
 import { LyricChatbot } from "./components/lyric-chatbot";
 import { Callback } from "./components/callback";
 import { Toaster } from "./components/ui/toaster"
+import { useSpotifyPlayer } from './components/spotify-web-player';
 
 function App() {
+  const { isReady, error } = useSpotifyPlayer();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('featured');
@@ -35,6 +37,11 @@ function App() {
   return (
     <>
       <div className="flex flex-col min-h-screen bg-background pb-24">
+        {error && (
+          <div className="fixed top-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg">
+            {error}
+          </div>
+        )}
         <Header />
         <div className="flex flex-1">
           <Sidebar 

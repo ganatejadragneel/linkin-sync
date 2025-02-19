@@ -1,33 +1,32 @@
 export const startPlayback = async (uri?: string, position_ms: number = 0) => {
     try {
       const accessToken = localStorage.getItem('access_token');
+      const deviceId = localStorage.getItem('spotify_device_id');
+  
       if (!accessToken) {
         throw new Error('No access token');
       }
   
-      // Get current playback state first to check for active device
-      const currentPlayback = await getCurrentPlayback();
-      if (!currentPlayback?.device?.id) {
-        throw new Error('No active Spotify device found. Please open Spotify on any device.');
+      if (!deviceId) {
+        throw new Error('No available playback device');
       }
   
       const body = uri ? {
         uris: [uri],
-        position_ms
-      } : undefined;
+        position_ms,
+        device_id: deviceId
+      } : {
+        device_id: deviceId
+      };
   
-      const response = await fetch('https://api.spotify.com/v1/me/player/play', {
+      const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: body ? JSON.stringify(body) : undefined
+        body: JSON.stringify(body)
       });
-  
-      if (response.status === 404) {
-        throw new Error('No active device found');
-      }
   
       if (!response.ok) {
         throw new Error('Failed to start playback');
