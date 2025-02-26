@@ -87,6 +87,12 @@ const ToastTitle = React.forwardRef<
 ))
 ToastTitle.displayName = ToastPrimitives.Title.displayName
 
+const toastVariants = {
+    default: "bg-background border",
+    destructive:
+      "group destructive border-destructive bg-destructive text-destructive-foreground",
+  };
+
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
@@ -113,4 +119,5 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
+  toastVariants,
 }

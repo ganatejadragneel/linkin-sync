@@ -12,6 +12,8 @@ import { LyricChatbot } from "./components/lyric-chatbot";
 import { Callback } from "./components/callback";
 import { Toaster } from "./components/ui/toaster"
 import { useSpotifyPlayer } from './components/spotify-web-player';
+import { AuthProvider } from './contexts/AuthContext';
+import { PlayerProvider } from './contexts/PlayerContext';
 
 function App() {
   const { isReady, error } = useSpotifyPlayer();
@@ -36,38 +38,42 @@ function App() {
 
   return (
     <>
-      <div className="flex flex-col min-h-screen bg-background pb-24">
-        {error && (
-          <div className="fixed top-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg">
-            {error}
+      <AuthProvider>
+        <PlayerProvider>
+          <div className="flex flex-col min-h-screen bg-background pb-24">
+            {error && (
+              <div className="fixed top-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg">
+                {error}
+              </div>
+            )}
+            <Header />
+            <div className="flex flex-1">
+              <Sidebar 
+                activeSection={activeSection} 
+                onSectionChange={setActiveSection} 
+              />
+              <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
+                isChatOpen ? 'mr-64' : ''} ${isChatbotOpen ? 'mr-1/3' : ''
+              }`}>
+                {activeSection === 'featured' && <MainContent />}
+                {activeSection === 'about' && <About />}
+                {activeSection === 'artists' && <Artists />}
+                {activeSection === 'playlists' && <Playlists />}
+              </main>
+            </div>
+            <ChatOptions 
+              onToggleChat={toggleChat}
+              onToggleChatbot={toggleChatbot}
+              isChatOpen={isChatOpen}
+              isChatbotOpen={isChatbotOpen}
+            />
+            <PlayerBar />
+            <GlobalChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+            <LyricChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
           </div>
-        )}
-        <Header />
-        <div className="flex flex-1">
-          <Sidebar 
-            activeSection={activeSection} 
-            onSectionChange={setActiveSection} 
-          />
-          <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
-            isChatOpen ? 'mr-64' : ''} ${isChatbotOpen ? 'mr-1/3' : ''
-          }`}>
-            {activeSection === 'featured' && <MainContent />}
-            {activeSection === 'about' && <About />}
-            {activeSection === 'artists' && <Artists />}
-            {activeSection === 'playlists' && <Playlists />}
-          </main>
-        </div>
-        <ChatOptions 
-          onToggleChat={toggleChat}
-          onToggleChatbot={toggleChatbot}
-          isChatOpen={isChatOpen}
-          isChatbotOpen={isChatbotOpen}
-        />
-        <PlayerBar />
-        <GlobalChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-        <LyricChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
-      </div>
-      <Toaster />
+          <Toaster />
+        </PlayerProvider>
+      </AuthProvider>
     </>
   );
 }

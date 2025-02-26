@@ -1,5 +1,5 @@
-// src/contexts/PlayerContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { updateNowPlaying } from '../services/lyricService';
 
 interface PlayerContextType {
   currentTrack: any;
@@ -14,6 +14,29 @@ const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  // When the current track changes, update our backend
+  useEffect(() => {
+    if (currentTrack) {
+      const updateBackendWithTrack = async () => {
+        try {
+          const trackData = {
+            track_id: currentTrack.id,
+            track_name: currentTrack.name,
+            artist: currentTrack.artists[0].name,
+            album: currentTrack.album.name
+          };
+          
+          await updateNowPlaying(trackData);
+          console.log('Updated backend with track from PlayerContext:', trackData);
+        } catch (error) {
+          console.error('Failed to update backend with track from PlayerContext:', error);
+        }
+      };
+      
+      updateBackendWithTrack();
+    }
+  }, [currentTrack]);
 
   const playTrack = async (trackUri: string) => {
     try {

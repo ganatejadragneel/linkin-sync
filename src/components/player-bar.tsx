@@ -1,4 +1,3 @@
-// src/components/player-bar.tsx
 import { useEffect, useState } from 'react';
 import { Button } from "./ui/button";
 import { FastForward, Pause, Play, Rewind, Volume2 } from 'lucide-react';
@@ -10,14 +9,17 @@ import {
   setVolume,
   getCurrentPlayback 
 } from '../utils/spotify-playback';
+import { updateNowPlaying } from '../services/lyricService';
 import { useToast } from './ui/use-toast';
 
 interface PlaybackState {
   is_playing: boolean;
   item?: {
+    id: string;
     name: string;
     artists: Array<{ name: string }>;
     album: {
+      name: string;
       images: Array<{ url: string }>;
     };
     duration_ms: number;
@@ -32,26 +34,70 @@ interface PlaybackState {
 export function PlayerBar() {
   const [playbackState, setPlaybackState] = useState<PlaybackState | null>(null);
   const [volume, setVolumeState] = useState(50);
+  const [isUpdatingBackend, setIsUpdatingBackend] = useState(false);
   const { toast } = useToast();
 
   const updatePlaybackState = async () => {
     try {
       const state = await getCurrentPlayback();
-      setPlaybackState(state);
-      if (state?.device?.volume_percent) {
-        setVolumeState(state.device.volume_percent);
+      
+      // If we have a state and it differs from our current state, update
+      if (state && JSON.stringify(state) !== JSON.stringify(playbackState)) {
+        setPlaybackState(state);
+        
+        if (state?.device?.volume_percent) {
+          setVolumeState(state.device.volume_percent);
+        }
+        
+        // If there's a track playing, update our backend
+        if (state?.item) {
+          await updateBackendWithCurrentTrack(state);
+        }
       }
     } catch (error) {
       console.error('Failed to get playback state:', error);
     }
   };
 
+  // Function to send currently playing track to backend
+  const updateBackendWithCurrentTrack = async (state: PlaybackState) => {
+    // Only update if we have a track and we're not already updating
+    if (state?.item && !isUpdatingBackend) {
+      try {
+        setIsUpdatingBackend(true);
+        
+        // Format the track data for the backend
+        const trackData = {
+          track_id: state.item.id,
+          track_name: state.item.name,
+          artist: state.item.artists[0].name,
+          album: state.item.album.name
+        };
+        
+        // Send to backend
+        await updateNowPlaying(trackData);
+        console.log('Updated backend with current track:', trackData);
+      } catch (error) {
+        console.error('Failed to update backend with current track:', error);
+      } finally {
+        setIsUpdatingBackend(false);
+      }
+    }
+  };
+
   useEffect(() => {
     updatePlaybackState();
-    // Update more frequently (every 500ms) to ensure smoother state updates
-    const interval = setInterval(updatePlaybackState, 500);
+    // Update more frequently (every 2 seconds) to ensure smoother state updates
+    const interval = setInterval(updatePlaybackState, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // Also update backend whenever playbackState changes
+  useEffect(() => {
+    if (playbackState?.item) {
+      updateBackendWithCurrentTrack(playbackState);
+    }
+  }, [playbackState?.item?.id]);
 
   const handlePlayPause = async () => {
     try {
@@ -74,7 +120,8 @@ export function PlayerBar() {
   const handleSkipNext = async () => {
     try {
       await skipToNext();
-      await updatePlaybackState();
+      // Add a small delay before updating to give Spotify time to change tracks
+      setTimeout(updatePlaybackState, 500);
     } catch (error) {
       toast({
         title: "Error",
@@ -87,7 +134,8 @@ export function PlayerBar() {
   const handleSkipPrevious = async () => {
     try {
       await skipToPrevious();
-      await updatePlaybackState();
+      // Add a small delay before updating to give Spotify time to change tracks
+      setTimeout(updatePlaybackState, 500);
     } catch (error) {
       toast({
         title: "Error",
