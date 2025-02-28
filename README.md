@@ -1,47 +1,147 @@
-# Getting Started with Create React App
+# LinkinSync Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+LinkinSync is a modern music streaming and social platform built with React, Typescript, and Tailwind CSS. The application integrates with Spotify for music playback and features a real-time chat system and AI-powered lyrics analysis.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Spotify Integration**: Stream music directly from your Spotify account
+- **Global Chat**: Connect with other users in real-time
+- **Lyric Analysis**: Ask questions about song lyrics and get AI-powered answers
+- **Music Player**: Full-featured music player with playback controls
+- **Dynamic UI**: Responsive, modern interface with dark mode
 
-### `npm start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **React**: UI library
+- **TypeScript**: Type-safe JavaScript
+- **Tailwind CSS**: Utility-first CSS framework
+- **Spotify Web Playback SDK**: For music streaming
+- **Context API**: For state management
+- **Shadcn UI**: For UI components
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js 16.x or higher
+- npm or yarn
+- Spotify Premium account
+- Spotify Developer Application
+- Backend server running (see backend repository)
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clone the repository
+   ```bash
+   git clone <repository-url>
+   cd linkin-sync
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Install dependencies
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Create a `.env` file in the root directory with the following variables:
+   ```
+   REACT_APP_SPOTIFY_CLIENT_ID=your_spotify_client_id
+   REACT_APP_SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+   REACT_APP_REDIRECT_URI=http://localhost:3000/callback
+   ```
 
-### `npm run eject`
+4. Start the development server
+   ```bash
+   npm start
+   # or
+   yarn start
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+5. The application will be available at http://localhost:3000
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Spotify Setup
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+1. Create a Spotify Developer Application at [developer.spotify.com](https://developer.spotify.com/dashboard/)
+2. Add `http://localhost:3000/callback` as a Redirect URI in your Spotify app settings
+3. Copy your Client ID and Client Secret to the `.env` file
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## Usage Guide
 
-## Learn More
+### Authentication
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. When you first open the application, click the "Login with Spotify" button
+2. You'll be redirected to Spotify's authentication page
+3. After granting access, you'll be redirected back to the application
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-# linkin-sync
+### Playing Music
+
+1. Browse featured content, artists, or playlists
+2. Click on an album to view its tracks
+3. Click the play button next to a track to start playback
+4. Use the player bar at the bottom to control playback
+
+### Using the Chat Features
+
+#### Global Chat
+1. Click the "Global Chat" button in the bottom left
+2. Type your message and press Enter or click Send
+3. Your message will be visible to all users
+
+#### Lyrics Assistant
+1. Start playing a song
+2. Click the "Lyric Chat" button in the bottom left
+3. Ask questions about the lyrics of the currently playing song
+4. The AI will analyze the lyrics and provide responses
+
+### Navigation
+
+- Use the sidebar to navigate between different sections
+- Featured: Discover new music and trending content
+- About: Learn more about the application
+- Artists: Browse featured artists
+- Playlists: View and manage playlists
+
+## Component Structure
+
+- `App.tsx`: Main application component
+- `components/`: UI components
+  - `player-bar.tsx`: Music player controls
+  - `lyric-chatbot.tsx`: AI-powered lyrics analysis
+  - `global-chat.tsx`: Real-time chat functionality
+  - `header.tsx`: Application header
+  - `sidebar.tsx`: Navigation sidebar
+  - `main-content.tsx`: Primary content area
+  - UI components in `ui/` folder
+
+## State Management
+
+- `AuthContext.tsx`: Manages authentication state
+- `PlayerContext.tsx`: Manages music player state
+
+## API Integration
+
+- `services/lyricService.ts`: Communicates with the backend API for lyrics analysis
+- `utils/spotify-auth.ts`: Handles Spotify authentication
+- `utils/spotify-playback.ts`: Controls Spotify playback
+
+## Building for Production
+
+```bash
+npm run build
+# or
+yarn build
+```
+
+This will create a production-ready build in the `build` directory.
+
+## Troubleshooting
+
+- **Spotify Playback Issues**: Make sure you have an active Spotify Premium account and an active device
+- **Chat Connection Issues**: Verify that the backend server is running
+- **Authentication Errors**: Check your Spotify Developer credentials and redirect URI
+- **Missing Lyrics**: Some songs may not have lyrics available on Genius
+
+## License
+
+[MIT License](LICENSE)
