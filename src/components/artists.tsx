@@ -1,7 +1,9 @@
 // src/components/artists.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { getArtistImage } from '../utils/spotify-auth';
+import { storageService } from '../services/storage.service';
 
 interface Artist {
   id: number;
@@ -16,6 +18,11 @@ interface Artist {
     name: string;
     year: string;
   }>;
+}
+
+interface ArtistWithImage extends Artist {
+  spotifyImageUrl?: string | null;
+  imageLoading?: boolean;
 }
 
 const artistsData: Artist[] = [
@@ -83,6 +90,55 @@ const artistsData: Artist[] = [
 
 export function Artists() {
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
+  const [artistsWithImages, setArtistsWithImages] = useState<ArtistWithImage[]>(
+    artistsData.map(artist => ({
+      ...artist,
+      imageLoading: true,
+      spotifyImageUrl: null
+    }))
+  );
+
+  useEffect(() => {
+    const fetchArtistImages = async () => {
+      // Fetch images for each artist
+      const imagePromises = artistsData.map(async (artist, index) => {
+        try {
+          const imageUrl = await getArtistImage(artist.name);
+          return { index, imageUrl };
+        } catch (error) {
+          console.error(`Failed to fetch image for ${artist.name}:`, error);
+          return { index, imageUrl: null };
+        }
+      });
+
+      const results = await Promise.all(imagePromises);
+      
+      // Update state with fetched images
+      setArtistsWithImages(prevArtists => 
+        prevArtists.map((artist, index) => {
+          const result = results.find(r => r.index === index);
+          return {
+            ...artist,
+            imageLoading: false,
+            spotifyImageUrl: result?.imageUrl || null
+          };
+        })
+      );
+    };
+
+    // Check if user is authenticated before fetching
+    if (storageService.isAuthenticated()) {
+      fetchArtistImages();
+    } else {
+      // If not authenticated, just set loading to false
+      setArtistsWithImages(prevArtists => 
+        prevArtists.map(artist => ({
+          ...artist,
+          imageLoading: false
+        }))
+      );
+    }
+  }, []);
 
   const toggleCard = (id: number) => {
     setExpandedCard(expandedCard === id ? null : id);
@@ -92,7 +148,7 @@ export function Artists() {
     <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
       <h2 className="text-2xl font-bold mb-6 text-primary">Featured Artists</h2>
       <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
-        {artistsData.map((artist) => (
+        {artistsWithImages.map((artist) => (
           <Card 
             key={artist.id} 
             className={`bg-card text-card-foreground hover:bg-accent/5 transition-all duration-300 cursor-pointer
@@ -109,11 +165,26 @@ export function Artists() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <img 
-                  src={artist.imageUrl} 
-                  alt={artist.name} 
-                  className="w-full h-48 object-cover rounded-md bg-accent/10"
-                />
+                <div className="relative w-full h-48 rounded-md bg-accent/10 overflow-hidden">
+                  {artist.imageLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <img 
+                      src={artist.spotifyImageUrl || artist.imageUrl} 
+                      alt={artist.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        // Only set to placeholder if it's not already the placeholder
+                        if (!target.src.includes('placeholder.svg')) {
+                          target.src = '/placeholder.svg';
+                        }
+                      }}
+                    />
+                  )}
+                </div>
                 <div className="md:col-span-2">
                   <p className="text-muted-foreground mb-2">{artist.shortInfo}</p>
                   <p className="text-muted-foreground">Debut: {artist.debutYear}</p>

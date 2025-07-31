@@ -66,10 +66,10 @@ export function PlayerBar() {
       try {
         setIsUpdatingBackend(true);
         
-        // Format the track data for the backend
+        // Format the track data for the backend (SpotifyTrack model)
         const trackData = {
-          track_id: state.item.id,
-          track_name: state.item.name,
+          id: state.item.id,
+          name: state.item.name,
           artist: state.item.artists[0].name,
           album: state.item.album.name
         };

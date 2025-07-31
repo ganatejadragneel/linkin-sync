@@ -1,96 +1,46 @@
 /**
- * Service to interact with the lyrics analysis backend
+ * Refactored Lyric Service using backend API service
+ * Legacy service for backward compatibility - will be deprecated
  */
 
-const BACKEND_URL = 'http://localhost:8080'; // Change to your backend URL
+import { backendApiService } from './api';
+import { NowPlaying, PlayHistory } from '../types';
 
 /**
  * Send currently playing track to the backend
+ * @deprecated Use backendApiService.updateNowPlaying() instead
  */
 export const updateNowPlaying = async (track: {
-  track_id: string;
-  track_name: string;
+  id: string;
+  name: string;
   artist: string;
   album: string;
 }): Promise<void> => {
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/now-playing`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(track),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update now playing: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error('Error updating now playing:', error);
-    throw error;
-  }
+  // Convert to backend SpotifyTrack format (the parameter is already in correct format)
+  await backendApiService.updateNowPlaying(track);
 };
 
 /**
  * Get the currently playing track
+ * @deprecated Use backendApiService.getNowPlaying() instead
  */
-export const getNowPlaying = async (): Promise<any> => {
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/now-playing`);
-    
-    if (response.status === 404) {
-      return null; // No song is currently playing
-    }
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get now playing: ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting now playing:', error);
-    throw error;
-  }
+export const getNowPlaying = async (): Promise<NowPlaying | null> => {
+  return await backendApiService.getNowPlaying();
 };
 
 /**
  * Send chat message to the lyrics assistant
+ * @deprecated Use backendApiService.sendChatQuery() instead
  */
 export const sendChatMessage = async (query: string): Promise<any> => {
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to send chat message: ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error sending chat message:', error);
-    throw error;
-  }
+  const response = await backendApiService.sendChatQuery({ query });
+  return response;
 };
 
 /**
  * Get play history
+ * @deprecated Use backendApiService.getPlayHistory() instead
  */
-export const getPlayHistory = async (): Promise<any[]> => {
-  try {
-    const response = await fetch(`${BACKEND_URL}/api/history`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get play history: ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting play history:', error);
-    throw error;
-  }
+export const getPlayHistory = async (): Promise<PlayHistory[]> => {
+  return await backendApiService.getPlayHistory();
 };

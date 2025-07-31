@@ -1,6 +1,7 @@
-// src/components/callback.tsx
+// Refactored Callback component using storage service
 import { useEffect, useState } from 'react';
 import { getAccessToken, getUserProfile } from '../utils/spotify-auth';
+import { storageService } from '../services/storage.service';
 
 export function Callback() {
   const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');
@@ -27,16 +28,16 @@ export function Callback() {
           throw new Error('No access token received');
         }
 
-        // Store tokens
-        localStorage.setItem('access_token', tokenResponse.access_token);
+        // Store tokens using storage service
+        storageService.setAccessToken(tokenResponse.access_token);
         if (tokenResponse.refresh_token) {
-          localStorage.setItem('refresh_token', tokenResponse.refresh_token);
+          storageService.setRefreshToken(tokenResponse.refresh_token);
         }
         
         // Get user profile
         const userProfile = await getUserProfile(tokenResponse.access_token);
         if (userProfile) {
-          localStorage.setItem('user_profile', JSON.stringify(userProfile));
+          storageService.setUserProfile(userProfile);
         }
 
         setStatus('success');

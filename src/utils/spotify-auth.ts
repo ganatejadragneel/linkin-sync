@@ -154,3 +154,59 @@ export const getAlbumDetails = async (albumId: string): Promise<any> => {
     throw error;
   }
 };
+
+// Search for artists and get their images
+export const searchArtist = async (artistName: string): Promise<any> => {
+  try {
+    const accessToken = localStorage.getItem('access_token');
+    
+    if (!accessToken) {
+      throw new Error('Not authenticated. Please log in.');
+    }
+
+    const encodedArtistName = encodeURIComponent(artistName);
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${encodedArtistName}&type=artist&limit=1`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    if (response.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_profile');
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`Failed to search artist: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.artists.items[0] || null;
+  } catch (error) {
+    console.error('Search artist error:', error);
+    throw error;
+  }
+};
+
+// Get artist image URL
+export const getArtistImage = async (artistName: string): Promise<string | null> => {
+  try {
+    console.log(`Fetching image for artist: ${artistName}`);
+    const artist = await searchArtist(artistName);
+    
+    if (artist && artist.images && artist.images.length > 0) {
+      // Return the highest quality image (first one is usually the largest)
+      const imageUrl = artist.images[0].url;
+      console.log(`Found image for ${artistName}: ${imageUrl}`);
+      return imageUrl;
+    }
+    
+    console.log(`No images found for ${artistName}`);
+    return null;
+  } catch (error) {
+    console.error(`Get artist image error for ${artistName}:`, error);
+    return null;
+  }
+};

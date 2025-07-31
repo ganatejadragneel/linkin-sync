@@ -21,8 +21,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const updateBackendWithTrack = async () => {
         try {
           const trackData = {
-            track_id: currentTrack.id,
-            track_name: currentTrack.name,
+            id: currentTrack.id,
+            name: currentTrack.name,
             artist: currentTrack.artists[0].name,
             album: currentTrack.album.name
           };
