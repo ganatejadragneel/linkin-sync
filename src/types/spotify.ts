@@ -39,6 +39,9 @@ export interface SpotifyTrack {
   track_number: number;
   explicit: boolean;
   preview_url: string | null;
+  external_urls: {
+    spotify: string;
+  };
 }
 
 export interface SpotifyDevice {
@@ -83,6 +86,55 @@ export interface SpotifyTokenResponse {
   scope: string;
   expires_in: number;
   refresh_token?: string;
+}
+
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description: string | null;
+  images: SpotifyImage[];
+  tracks: {
+    total: number;
+  };
+  owner: {
+    id: string;
+    display_name: string;
+  };
+  public: boolean;
+  collaborative: boolean;
+  external_urls: {
+    spotify: string;
+  };
+}
+
+export interface SpotifyPlaylistsResponse {
+  items: SpotifyPlaylist[];
+  total: number;
+  limit: number;
+  offset: number;
+  next: string | null;
+  previous: string | null;
+}
+
+export interface SpotifyFeaturedPlaylistsResponse {
+  message: string;
+  playlists: SpotifyPlaylistsResponse;
+}
+
+export interface SpotifyPlaylistTrack {
+  added_at: string;
+  track: SpotifyTrack & {
+    popularity: number;
+  };
+}
+
+export interface SpotifyPlaylistTracksResponse {
+  items: SpotifyPlaylistTrack[];
+  total: number;
+  limit: number;
+  offset: number;
+  next: string | null;
+  previous: string | null;
 }
 
 export interface SpotifyError {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { AlbumDetails } from './album-details';
 import { getAlbumDetails, initiateSpotifyLogin } from '../utils/spotify-auth';
+import { storageService } from '../services/storage.service';
 import { Loader2 } from 'lucide-react';
 
 const albums = [
@@ -56,7 +57,7 @@ export function MainContent() {
 
   const handleAlbumClick = async (album: any) => {
     // Check if user is logged in
-    if (!localStorage.getItem('access_token')) {
+    if (!storageService.getAccessToken()) {
       setError('Please log in to view album details');
       return;
     }
@@ -87,7 +88,7 @@ export function MainContent() {
 
   return (
     <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
-      <h2 className="text-2xl font-bold mb-4 text-primary">Featured Content</h2>
+      <h2 className="text-xl font-bold mb-4 text-primary">Featured Content</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {albums.map((album) => (
           <Card 

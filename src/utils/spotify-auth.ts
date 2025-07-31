@@ -1,5 +1,7 @@
 // src/utils/spotify-auth.ts
 
+import { storageService } from '../services/storage.service';
+
 // Generate a random string for code verifier
 export const generateRandomString = (length: number): string => {
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -28,9 +30,7 @@ const base64encode = (input: ArrayBuffer): string => {
 export const initiateSpotifyLogin = async () => {
   try {
     // Clear any existing auth data
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_profile');
+    storageService.clearAuthData();
     
     const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
     const redirectUri = process.env.REACT_APP_REDIRECT_URI;
@@ -43,9 +43,9 @@ export const initiateSpotifyLogin = async () => {
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
     // Store code verifier for later use
-    localStorage.setItem('code_verifier', codeVerifier);
+    storageService.setCodeVerifier(codeVerifier);
 
-    const scope = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing';
+    const scope = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
     const authUrl = new URL("https://accounts.spotify.com/authorize");
 
     const params = {
@@ -70,7 +70,7 @@ export const getAccessToken = async (code: string): Promise<any> => {
   try {
     const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
     const redirectUri = process.env.REACT_APP_REDIRECT_URI;
-    const codeVerifier = localStorage.getItem('code_verifier');
+    const codeVerifier = storageService.getCodeVerifier();
 
     if (!clientId || !redirectUri || !codeVerifier) {
       throw new Error('Missing required authentication parameters');
@@ -125,7 +125,7 @@ export const getUserProfile = async (accessToken: string): Promise<any> => {
 // Get album details
 export const getAlbumDetails = async (albumId: string): Promise<any> => {
   try {
-    const accessToken = localStorage.getItem('access_token');
+    const accessToken = storageService.getAccessToken();
     
     if (!accessToken) {
       throw new Error('Not authenticated. Please log in.');
@@ -139,8 +139,7 @@ export const getAlbumDetails = async (albumId: string): Promise<any> => {
 
     if (response.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_profile');
+      storageService.clearAuthData();
       throw new Error('Session expired. Please log in again.');
     }
 
@@ -158,7 +157,7 @@ export const getAlbumDetails = async (albumId: string): Promise<any> => {
 // Search for artists and get their images
 export const searchArtist = async (artistName: string): Promise<any> => {
   try {
-    const accessToken = localStorage.getItem('access_token');
+    const accessToken = storageService.getAccessToken();
     
     if (!accessToken) {
       throw new Error('Not authenticated. Please log in.');
@@ -173,8 +172,7 @@ export const searchArtist = async (artistName: string): Promise<any> => {
 
     if (response.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_profile');
+      storageService.clearAuthData();
       throw new Error('Session expired. Please log in again.');
     }
 

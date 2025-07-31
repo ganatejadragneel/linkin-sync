@@ -9,6 +9,10 @@ import {
   SpotifyAlbum,
   SpotifyArtist,
   SpotifyTrack,
+  SpotifyPlaylist,
+  SpotifyPlaylistsResponse,
+  SpotifyFeaturedPlaylistsResponse,
+  SpotifyPlaylistTracksResponse,
 } from '../../types';
 
 class SpotifyApiService extends BaseApiService {
@@ -126,6 +130,67 @@ class SpotifyApiService extends BaseApiService {
 
   async getTrack(trackId: string): Promise<SpotifyTrack> {
     const response = await this.get<SpotifyTrack>(`/tracks/${trackId}`);
+    return response.data;
+  }
+
+  // Playlist endpoints
+  async getUserPlaylists(limit = 50, offset = 0): Promise<SpotifyPlaylistsResponse> {
+    const response = await this.get<SpotifyPlaylistsResponse>(
+      `/me/playlists?limit=${limit}&offset=${offset}`
+    );
+    return response.data;
+  }
+
+  async getAllUserPlaylists(): Promise<SpotifyPlaylistsResponse> {
+    const firstBatch = await this.getUserPlaylists(50, 0);
+    
+    // If there are more playlists, fetch them all
+    if (firstBatch.total > 50) {
+      const allPlaylists = [...firstBatch.items];
+      const totalPages = Math.ceil(firstBatch.total / 50);
+      
+      const remainingRequests = [];
+      for (let page = 1; page < totalPages; page++) {
+        remainingRequests.push(this.getUserPlaylists(50, page * 50));
+      }
+      
+      const remainingBatches = await Promise.all(remainingRequests);
+      remainingBatches.forEach(batch => {
+        allPlaylists.push(...batch.items);
+      });
+      
+      return {
+        ...firstBatch,
+        items: allPlaylists,
+      };
+    }
+    
+    return firstBatch;
+  }
+
+  // Featured content endpoints
+  async getFeaturedPlaylists(limit = 3, offset = 0, country = 'US'): Promise<SpotifyFeaturedPlaylistsResponse> {
+    const response = await this.get<SpotifyFeaturedPlaylistsResponse>(
+      `/browse/featured-playlists?limit=${limit}&offset=${offset}&country=${country}`
+    );
+    return response.data;
+  }
+
+  async getTopTracksPlaylist(): Promise<SpotifyPlaylist> {
+    // Use the Global Top 50 playlist as a source for trending tracks
+    const response = await this.get<SpotifyPlaylist>('/playlists/37i9dQZEVXbNG2KDcFcKOF');
+    return response.data;
+  }
+
+  async getPlaylist(playlistId: string): Promise<SpotifyPlaylist> {
+    const response = await this.get<SpotifyPlaylist>(`/playlists/${playlistId}`);
+    return response.data;
+  }
+
+  async getPlaylistTracks(playlistId: string, limit = 9, offset = 0): Promise<SpotifyPlaylistTracksResponse> {
+    const response = await this.get<SpotifyPlaylistTracksResponse>(
+      `/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}&fields=items(track(id,name,artists,album,duration_ms,external_urls,popularity))`
+    );
     return response.data;
   }
 }
