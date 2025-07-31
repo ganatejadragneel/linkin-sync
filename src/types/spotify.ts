@@ -10,6 +10,11 @@ export interface SpotifyArtist {
     spotify: string;
   };
   images?: SpotifyImage[];
+  followers?: {
+    total: number;
+  };
+  genres?: string[];
+  popularity?: number;
 }
 
 export interface SpotifyAlbum {
@@ -135,6 +140,36 @@ export interface SpotifyPlaylistTracksResponse {
   offset: number;
   next: string | null;
   previous: string | null;
+}
+
+export interface SpotifyTopArtistsResponse {
+  items: SpotifyArtist[];
+  total: number;
+  limit: number;
+  offset: number;
+  next: string | null;
+  previous: string | null;
+}
+
+export interface SpotifyPlayHistory {
+  track: SpotifyTrack;
+  played_at: string;
+  context: {
+    type: string;
+    href: string;
+    uri: string;
+  } | null;
+}
+
+export interface SpotifyRecentlyPlayedResponse {
+  items: SpotifyPlayHistory[];
+  next: string | null;
+  cursors: {
+    after: string;
+    before: string;
+  };
+  limit: number;
+  href: string;
 }
 
 export interface SpotifyError {

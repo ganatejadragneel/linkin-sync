@@ -1,241 +1,238 @@
 // src/components/artists.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import { getArtistImage } from '../utils/spotify-auth';
-import { storageService } from '../services/storage.service';
+import { ChevronDown, ChevronUp, Loader2, Music, RefreshCw, Crown } from 'lucide-react';
+import { Button } from './ui/button';
+import { useTopArtists } from '../hooks/useTopArtists';
 
-interface Artist {
-  id: number;
-  name: string;
-  imageUrl: string;
-  debutYear: string;
-  shortInfo: string;
-  genres: string[];
-  biography: string;
-  achievements: string[];
-  popularAlbums: Array<{
-    name: string;
-    year: string;
-  }>;
-}
-
-interface ArtistWithImage extends Artist {
-  spotifyImageUrl?: string | null;
-  imageLoading?: boolean;
-}
-
-const artistsData: Artist[] = [
-  {
-    id: 1,
-    name: "Coldplay",
-    imageUrl: "/placeholder.svg",
-    debutYear: "1996",
-    shortInfo: "British rock band formed in London",
-    genres: ["Alternative Rock", "Pop Rock", "Art Pop", "Pop"],
-    biography: "Coldplay formed at University College London by Chris Martin and Jonny Buckland. With over 100 million albums sold worldwide, they've evolved from alternative rock to more experimental and pop-oriented sounds. Known for their spectacular live performances and innovative music videos.",
-    achievements: [
-      "7 Grammy Awards",
-      "9 Brit Awards",
-      "7 Billboard Music Awards",
-      "Over 100 million records sold worldwide"
-    ],
-    popularAlbums: [
-      { name: "Parachutes", year: "2000" },
-      { name: "A Rush of Blood to the Head", year: "2002" },
-      { name: "Viva la Vida", year: "2008" }
-    ]
-  },
-  {
-    id: 2,
-    name: "Taylor Swift",
-    imageUrl: "/placeholder.svg",
-    debutYear: "2006",
-    shortInfo: "American singer-songwriter who transformed from country to pop superstar",
-    genres: ["Pop", "Country", "Folk", "Alternative"],
-    biography: "Taylor Swift began her career as a country music singer at age 16. She has since evolved into one of the world's best-selling music artists, successfully transitioning from country to pop music. Known for her narrative songwriting and artistic reinventions.",
-    achievements: [
-      "12 Grammy Awards",
-      "40+ Guinness World Records",
-      "Billboard's Woman of the Decade (2010s)",
-      "Most streamed female artist on Spotify"
-    ],
-    popularAlbums: [
-      { name: "Fearless", year: "2008" },
-      { name: "1989", year: "2014" },
-      { name: "Folklore", year: "2020" }
-    ]
-  },
-  {
-    id: 3,
-    name: "Linkin Park",
-    imageUrl: "/placeholder.svg",
-    debutYear: "1996",
-    shortInfo: "American rock band known for blending rock and hip-hop",
-    genres: ["Alternative Rock", "Nu Metal", "Electronic Rock", "Rap Rock"],
-    biography: "Linkin Park revolutionized the rock genre by combining heavy guitars with hip-hop elements. Formed in California, they became one of the best-selling bands of the 21st century. Their debut album 'Hybrid Theory' is among the best-selling debuts of all time.",
-    achievements: [
-      "2 Grammy Awards",
-      "6 American Music Awards",
-      "Over 100 million records sold worldwide",
-      "First rock band to achieve more than 1 billion YouTube views"
-    ],
-    popularAlbums: [
-      { name: "Hybrid Theory", year: "2000" },
-      { name: "Meteora", year: "2003" },
-      { name: "Minutes to Midnight", year: "2007" }
-    ]
+const formatFollowers = (followers: number): string => {
+  if (followers >= 1000000) {
+    return `${(followers / 1000000).toFixed(1)}M followers`;
+  } else if (followers >= 1000) {
+    return `${(followers / 1000).toFixed(1)}K followers`;
   }
-];
+  return `${followers} followers`;
+};
+
+const getArtistImage = (artist: any): string | null => {
+  if (artist.images && artist.images.length > 0) {
+    // Return the medium-sized image (usually the middle one)
+    const mediumImage = artist.images[1] || artist.images[0];
+    return mediumImage?.url || null;
+  }
+  return null;
+};
+
+const openSpotifyArtist = (url: string) => {
+  window.open(url, '_blank');
+};
 
 export function Artists() {
-  const [expandedCard, setExpandedCard] = useState<number | null>(null);
-  const [artistsWithImages, setArtistsWithImages] = useState<ArtistWithImage[]>(
-    artistsData.map(artist => ({
-      ...artist,
-      imageLoading: true,
-      spotifyImageUrl: null
-    }))
-  );
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const { topArtists, loading, error, refetch, isAuthenticated } = useTopArtists();
 
-  useEffect(() => {
-    const fetchArtistImages = async () => {
-      // Fetch images for each artist
-      const imagePromises = artistsData.map(async (artist, index) => {
-        try {
-          const imageUrl = await getArtistImage(artist.name);
-          return { index, imageUrl };
-        } catch (error) {
-          console.error(`Failed to fetch image for ${artist.name}:`, error);
-          return { index, imageUrl: null };
-        }
-      });
-
-      const results = await Promise.all(imagePromises);
-      
-      // Update state with fetched images
-      setArtistsWithImages(prevArtists => 
-        prevArtists.map((artist, index) => {
-          const result = results.find(r => r.index === index);
-          return {
-            ...artist,
-            imageLoading: false,
-            spotifyImageUrl: result?.imageUrl || null
-          };
-        })
-      );
-    };
-
-    // Check if user is authenticated before fetching
-    if (storageService.isAuthenticated()) {
-      fetchArtistImages();
-    } else {
-      // If not authenticated, just set loading to false
-      setArtistsWithImages(prevArtists => 
-        prevArtists.map(artist => ({
-          ...artist,
-          imageLoading: false
-        }))
-      );
-    }
-  }, []);
-
-  const toggleCard = (id: number) => {
+  const toggleCard = (id: string) => {
     setExpandedCard(expandedCard === id ? null : id);
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
+        <h2 className="text-xl font-bold mb-6 text-primary">Your Top Artists</h2>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <Music className="h-16 w-16 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold text-primary mb-2">Login Required</h3>
+          <p className="text-muted-foreground">
+            Please log in with Spotify to view your top artists
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
+        <h2 className="text-xl font-bold mb-6 text-primary">Your Top Artists</h2>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <Loader2 className="h-16 w-16 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground">Loading your top artists...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
+        <h2 className="text-xl font-bold mb-6 text-primary">Your Top Artists</h2>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <Music className="h-16 w-16 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold text-primary mb-2">Failed to Load Artists</h3>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={refetch} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (topArtists.length === 0) {
+    return (
+      <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
+        <h2 className="text-xl font-bold mb-6 text-primary">Your Top Artists</h2>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <Music className="h-16 w-16 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold text-primary mb-2">No Top Artists Yet</h3>
+          <p className="text-muted-foreground">
+            Listen to more music on Spotify to see your top artists here
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
-      <h2 className="text-2xl font-bold mb-6 text-primary">Featured Artists</h2>
-      <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
-        {artistsWithImages.map((artist) => (
-          <Card 
-            key={artist.id} 
-            className={`bg-card text-card-foreground hover:bg-accent/5 transition-all duration-300 cursor-pointer
-              ${expandedCard === artist.id ? 'ring-1 ring-primary/20' : ''}`}
-            onClick={() => toggleCard(artist.id)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl text-primary">{artist.name}</CardTitle>
-              {expandedCard === artist.id ? (
-                <ChevronUp className="h-5 w-5 text-primary" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-primary" />
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="relative w-full h-48 rounded-md bg-accent/10 overflow-hidden">
-                  {artist.imageLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <img 
-                      src={artist.spotifyImageUrl || artist.imageUrl} 
-                      alt={artist.name} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        // Only set to placeholder if it's not already the placeholder
-                        if (!target.src.includes('placeholder.svg')) {
-                          target.src = '/placeholder.svg';
-                        }
-                      }}
-                    />
-                  )}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-primary">Your Top Artists</h2>
+          <p className="text-sm text-muted-foreground">Based on your listening from the past month</p>
+        </div>
+        <Button onClick={refetch} variant="ghost" size="sm">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-6xl mx-auto">
+        {topArtists.map((artist, index) => {
+          const imageUrl = getArtistImage(artist);
+          
+          return (
+            <Card 
+              key={artist.id} 
+              className={`bg-card text-card-foreground hover:bg-accent/5 transition-all duration-300 cursor-pointer
+                ${expandedCard === artist.id ? 'ring-1 ring-primary/20' : ''}`}
+              onClick={() => toggleCard(artist.id)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-6 h-6 bg-primary/10 rounded-full text-primary font-bold text-xs flex-shrink-0">
+                    {index === 0 ? <Crown className="w-3 h-3" /> : index + 1}
+                  </div>
+                  <CardTitle className="text-base text-primary truncate">{artist.name}</CardTitle>
                 </div>
-                <div className="md:col-span-2">
-                  <p className="text-muted-foreground mb-2">{artist.shortInfo}</p>
-                  <p className="text-muted-foreground">Debut: {artist.debutYear}</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {artist.genres.map((genre, index) => (
-                      <span 
-                        key={index}
-                        className="px-2 py-1 bg-accent/10 rounded-full text-sm text-primary"
-                      >
-                        {genre}
-                      </span>
-                    ))}
+                {expandedCard === artist.id ? (
+                  <ChevronUp className="h-4 w-4 text-primary" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-primary" />
+                )}
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex gap-3 mb-3">
+                  <div className="relative w-16 h-16 rounded-md bg-accent/10 overflow-hidden flex-shrink-0">
+                    {imageUrl ? (
+                      <img 
+                        src={imageUrl} 
+                        alt={artist.name} 
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <Music className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
-
-              {expandedCard === artist.id && (
-                <div className="mt-6 space-y-4 border-t border-border pt-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-primary">Biography</h3>
-                    <p className="text-muted-foreground">{artist.biography}</p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-primary">Notable Achievements</h3>
-                    <ul className="list-disc list-inside text-muted-foreground">
-                      {artist.achievements.map((achievement, index) => (
-                        <li key={index}>{achievement}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-primary">Popular Albums</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {artist.popularAlbums.map((album, index) => (
-                        <div 
-                          key={index}
-                          className="p-3 bg-accent/10 rounded-md"
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {artist.followers?.total ? formatFollowers(artist.followers.total) : 'Popular artist on Spotify'}
+                    </p>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {artist.genres?.slice(0, 2).map((genre, genreIndex) => (
+                        <span 
+                          key={genreIndex}
+                          className="px-2 py-0.5 bg-accent/10 rounded-full text-xs text-primary"
                         >
-                          <p className="font-medium text-primary">{album.name}</p>
-                          <p className="text-sm text-muted-foreground">{album.year}</p>
-                        </div>
+                          {genre}
+                        </span>
                       ))}
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Popularity: {artist.popularity}/100
+                      </p>
+                      <div className="w-full bg-accent/20 rounded-full h-1.5 mt-1">
+                        <div 
+                          className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                          style={{ width: `${artist.popularity}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+
+                {expandedCard === artist.id && (
+                  <div className="mt-3 space-y-3 border-t border-border pt-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-primary mb-1">Artist Details</h3>
+                        <p className="text-xs text-muted-foreground">
+                          One of your most listened artists recently.
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openSpotifyArtist(artist.external_urls.spotify);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs px-2 py-1 h-7"
+                      >
+                        Open in Spotify
+                      </Button>
+                    </div>
+
+                    {artist.genres && artist.genres.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold mb-1 text-primary">All Genres</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {artist.genres.map((genre, genreIndex) => (
+                            <span 
+                              key={genreIndex}
+                              className="px-2 py-0.5 bg-primary/10 rounded-full text-xs text-primary border border-primary/20"
+                            >
+                              {genre}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h4 className="text-xs font-semibold mb-2 text-primary">Statistics</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2 bg-accent/10 rounded-md">
+                          <p className="text-xs text-muted-foreground">Followers</p>
+                          <p className="text-xs font-semibold text-primary">
+                            {artist.followers?.total ? formatFollowers(artist.followers.total) : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="p-2 bg-accent/10 rounded-md">
+                          <p className="text-xs text-muted-foreground">Popularity</p>
+                          <p className="text-xs font-semibold text-primary">{artist.popularity}/100</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

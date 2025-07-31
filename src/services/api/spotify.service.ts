@@ -13,6 +13,8 @@ import {
   SpotifyPlaylistsResponse,
   SpotifyFeaturedPlaylistsResponse,
   SpotifyPlaylistTracksResponse,
+  SpotifyTopArtistsResponse,
+  SpotifyRecentlyPlayedResponse,
 } from '../../types';
 
 class SpotifyApiService extends BaseApiService {
@@ -190,6 +192,21 @@ class SpotifyApiService extends BaseApiService {
   async getPlaylistTracks(playlistId: string, limit = 9, offset = 0): Promise<SpotifyPlaylistTracksResponse> {
     const response = await this.get<SpotifyPlaylistTracksResponse>(
       `/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}&fields=items(track(id,name,artists,album,duration_ms,external_urls,popularity))`
+    );
+    return response.data;
+  }
+
+  // Top content endpoints
+  async getTopArtists(timeRange: 'short_term' | 'medium_term' | 'long_term' = 'short_term', limit = 10): Promise<SpotifyTopArtistsResponse> {
+    const response = await this.get<SpotifyTopArtistsResponse>(
+      `/me/top/artists?time_range=${timeRange}&limit=${limit}`
+    );
+    return response.data;
+  }
+
+  async getRecentlyPlayedTracks(limit = 50): Promise<SpotifyRecentlyPlayedResponse> {
+    const response = await this.get<SpotifyRecentlyPlayedResponse>(
+      `/me/player/recently-played?limit=${limit}`
     );
     return response.data;
   }

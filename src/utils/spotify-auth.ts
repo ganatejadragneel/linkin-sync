@@ -45,7 +45,7 @@ export const initiateSpotifyLogin = async () => {
     // Store code verifier for later use
     storageService.setCodeVerifier(codeVerifier);
 
-    const scope = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
+    const scope = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative user-top-read';
     const authUrl = new URL("https://accounts.spotify.com/authorize");
 
     const params = {
