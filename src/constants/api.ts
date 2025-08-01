@@ -38,6 +38,17 @@ export const SPOTIFY_ENDPOINTS = {
   SEARCH: '/search',
 } as const;
 
+// YouTube API
+export const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
+export const YOUTUBE_OAUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+export const YOUTUBE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+export const YOUTUBE_ENDPOINTS = {
+  PLAYLISTS: '/playlists',
+  PLAYLIST_ITEMS: '/playlistItems',
+  CHANNELS: '/channels',
+} as const;
+
 // API Configuration
 export const API_CONFIG = {
   TIMEOUT: 30000, // 30 seconds

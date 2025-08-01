@@ -24,6 +24,12 @@ export function Callback() {
 
         // Get access token
         const tokenResponse = await getAccessToken(code);
+        console.log('Token response received:', {
+          hasAccessToken: !!tokenResponse.access_token,
+          hasRefreshToken: !!tokenResponse.refresh_token,
+          expiresIn: tokenResponse.expires_in
+        });
+        
         if (!tokenResponse.access_token) {
           throw new Error('No access token received');
         }
@@ -32,6 +38,9 @@ export function Callback() {
         storageService.setAccessToken(tokenResponse.access_token);
         if (tokenResponse.refresh_token) {
           storageService.setRefreshToken(tokenResponse.refresh_token);
+          console.log('Refresh token stored successfully');
+        } else {
+          console.warn('No refresh token received from Spotify - this may cause authentication issues later');
         }
         
         // Get user profile

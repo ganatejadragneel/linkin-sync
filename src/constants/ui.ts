@@ -36,11 +36,3 @@ export const TOAST_CONFIG = {
   POSITION: 'bottom-right',
 } as const;
 
-// Storage keys
-export const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
-  USER_PROFILE: 'user_profile',
-  CODE_VERIFIER: 'code_verifier',
-  DEVICE_ID: 'spotify_device_id', // Corrected to match actual usage
-} as const;

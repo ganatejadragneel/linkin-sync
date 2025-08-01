@@ -10,10 +10,12 @@ import { ChatOptions } from "./components/chat-options";
 import { GlobalChat } from "./components/global-chat";
 import { LyricChatbot } from "./components/lyric-chatbot";
 import { Callback } from "./components/callback";
+import { YouTubeCallback } from "./components/youtube-callback";
 import { Toaster } from "./components/ui/toaster"
 import { useSpotifyPlayer } from './components/spotify-web-player';
 import { AuthProvider } from './contexts/AuthContext';
 import { PlayerProvider } from './contexts/PlayerContext';
+import { MusicPlayerProvider } from './contexts/MusicPlayerContext';
 
 function App() {
   const { isReady, error } = useSpotifyPlayer();
@@ -31,16 +33,21 @@ function App() {
     if (isChatOpen) setIsChatOpen(false);
   };
 
-  // Check if we're on the callback route
+  // Check if we're on the callback routes
   if (window.location.pathname === '/callback') {
     return <Callback />;
+  }
+  
+  if (window.location.pathname === '/youtube-callback') {
+    return <YouTubeCallback />;
   }
 
   return (
     <>
       <AuthProvider>
         <PlayerProvider>
-          <div className="flex flex-col min-h-screen bg-background pb-24">
+          <MusicPlayerProvider>
+            <div className="flex flex-col min-h-screen bg-background pb-24">
             {error && (
               <div className="fixed top-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg">
                 {error}
@@ -70,8 +77,9 @@ function App() {
             <PlayerBar />
             <GlobalChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
             <LyricChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
-          </div>
-          <Toaster />
+            </div>
+            <Toaster />
+          </MusicPlayerProvider>
         </PlayerProvider>
       </AuthProvider>
     </>

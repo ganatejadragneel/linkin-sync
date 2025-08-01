@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { storageService } from '../services/storage.service';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -13,28 +14,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const profile = localStorage.getItem('user_profile');
+    const token = storageService.getAccessToken();
+    const profile = storageService.getUserProfile();
     
     if (token && profile) {
-      try {
-        setUserProfile(JSON.parse(profile));
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing user profile:', error);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_profile');
-      }
+      setUserProfile(profile);
+      setIsAuthenticated(true);
     }
   }, []);
 
   useEffect(() => {
     if (userProfile) {
       setIsAuthenticated(true);
-      localStorage.setItem('user_profile', JSON.stringify(userProfile));
+      storageService.setUserProfile(userProfile);
     } else {
       setIsAuthenticated(false);
-      localStorage.removeItem('user_profile');
     }
   }, [userProfile]);
 

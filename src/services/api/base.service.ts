@@ -29,7 +29,7 @@ export abstract class BaseApiService {
       const response = await this.fetchWithTimeout(url, config);
       
       if (!response.ok) {
-        throw await this.handleErrorResponse(response);
+        await this.handleErrorResponse(response);
       }
 
       const data = await response.json();
@@ -68,7 +68,7 @@ export abstract class BaseApiService {
     }
   }
 
-  private async handleErrorResponse(response: Response): Promise<ApiError> {
+  private async handleErrorResponse(response: Response): Promise<never> {
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
     let errorDetails = null;
 
@@ -84,13 +84,11 @@ export abstract class BaseApiService {
       // If response is not JSON, use default error message
     }
 
-    const error: ApiError = {
-      message: errorMessage,
-      code: response.status.toString(),
-      details: errorDetails,
-    };
+    const error = new Error(errorMessage) as Error & { code: string; details: any };
+    error.code = response.status.toString();
+    error.details = errorDetails;
 
-    return error;
+    throw error;
   }
 
   // Helper methods for common HTTP verbs

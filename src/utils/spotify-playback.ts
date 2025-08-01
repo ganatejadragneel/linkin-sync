@@ -1,7 +1,9 @@
+import { storageService } from '../services/storage.service';
+
 export const startPlayback = async (uri?: string, position_ms: number = 0) => {
     try {
-      const accessToken = localStorage.getItem('access_token');
-      const deviceId = localStorage.getItem('spotify_device_id');
+      const accessToken = storageService.getAccessToken();
+      const deviceId = storageService.getDeviceId();
   
       if (!accessToken) {
         throw new Error('No access token');
@@ -39,7 +41,7 @@ export const startPlayback = async (uri?: string, position_ms: number = 0) => {
   
   export const pausePlayback = async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) {
         throw new Error('No access token');
       }
@@ -62,7 +64,7 @@ export const startPlayback = async (uri?: string, position_ms: number = 0) => {
   
   export const skipToNext = async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) {
         throw new Error('No access token');
       }
@@ -85,7 +87,7 @@ export const startPlayback = async (uri?: string, position_ms: number = 0) => {
   
   export const skipToPrevious = async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) {
         throw new Error('No access token');
       }
@@ -108,7 +110,7 @@ export const startPlayback = async (uri?: string, position_ms: number = 0) => {
   
   export const setVolume = async (volumePercent: number) => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) {
         throw new Error('No access token');
       }
@@ -131,7 +133,7 @@ export const startPlayback = async (uri?: string, position_ms: number = 0) => {
   
   export const getCurrentPlayback = async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) {
         throw new Error('No access token');
       }

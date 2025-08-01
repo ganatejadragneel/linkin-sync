@@ -1,9 +1,9 @@
 // src/components/artists.tsx
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { ChevronDown, ChevronUp, Loader2, Music, RefreshCw, Crown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Music, RefreshCw, Crown, ExternalLink } from 'lucide-react';
 import { Button } from './ui/button';
-import { useTopArtists } from '../hooks/useTopArtists';
+import { useUnifiedArtists } from '../hooks/useUnifiedArtists';
 
 const formatFollowers = (followers: number): string => {
   if (followers >= 1000000) {
@@ -15,27 +15,39 @@ const formatFollowers = (followers: number): string => {
 };
 
 const getArtistImage = (artist: any): string | null => {
+  // For unified artists, use the imageUrl directly
+  if (artist.imageUrl) {
+    return artist.imageUrl;
+  }
+  // Fallback for legacy Spotify format
   if (artist.images && artist.images.length > 0) {
-    // Return the medium-sized image (usually the middle one)
     const mediumImage = artist.images[1] || artist.images[0];
     return mediumImage?.url || null;
   }
   return null;
 };
 
-const openSpotifyArtist = (url: string) => {
+const openArtistLink = (url: string) => {
   window.open(url, '_blank');
+};
+
+const getSourceLabel = (source: 'spotify' | 'youtube') => {
+  return source === 'spotify' ? 'Spotify' : 'YouTube';
+};
+
+const getSourceColor = (source: 'spotify' | 'youtube') => {
+  return source === 'spotify' ? 'text-green-500' : 'text-red-500';
 };
 
 export function Artists() {
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const { topArtists, loading, error, refetch, isAuthenticated } = useTopArtists();
+  const { artists, loading, error, refetch, hasAnyAuthentication, isSpotifyAuthenticated, isYouTubeAuthenticated } = useUnifiedArtists();
 
   const toggleCard = (id: string) => {
     setExpandedCard(expandedCard === id ? null : id);
   };
 
-  if (!isAuthenticated) {
+  if (!hasAnyAuthentication) {
     return (
       <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
         <h2 className="text-xl font-bold mb-6 text-primary">Your Top Artists</h2>
@@ -43,7 +55,7 @@ export function Artists() {
           <Music className="h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold text-primary mb-2">Login Required</h3>
           <p className="text-muted-foreground">
-            Please log in with Spotify to view your top artists
+            Please log in with Spotify or YouTube Music to view your top artists
           </p>
         </div>
       </div>
@@ -79,7 +91,7 @@ export function Artists() {
     );
   }
 
-  if (topArtists.length === 0) {
+  if (artists.length === 0) {
     return (
       <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
         <h2 className="text-xl font-bold mb-6 text-primary">Your Top Artists</h2>
@@ -87,7 +99,7 @@ export function Artists() {
           <Music className="h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold text-primary mb-2">No Top Artists Yet</h3>
           <p className="text-muted-foreground">
-            Listen to more music on Spotify to see your top artists here
+            Listen to more music on {isSpotifyAuthenticated && isYouTubeAuthenticated ? 'Spotify and YouTube Music' : isSpotifyAuthenticated ? 'Spotify' : 'YouTube Music'} to see your top artists here
           </p>
         </div>
       </div>
@@ -99,7 +111,9 @@ export function Artists() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-primary">Your Top Artists</h2>
-          <p className="text-sm text-muted-foreground">Based on your listening from the past month</p>
+          <p className="text-sm text-muted-foreground">
+            From {isSpotifyAuthenticated && isYouTubeAuthenticated ? 'Spotify & YouTube Music' : isSpotifyAuthenticated ? 'Spotify' : 'YouTube Music'} - based on your recent listening
+          </p>
         </div>
         <Button onClick={refetch} variant="ghost" size="sm">
           <RefreshCw className="h-4 w-4" />
@@ -107,7 +121,7 @@ export function Artists() {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-6xl mx-auto">
-        {topArtists.map((artist, index) => {
+        {artists.map((artist, index) => {
           const imageUrl = getArtistImage(artist);
           
           return (
@@ -118,11 +132,14 @@ export function Artists() {
               onClick={() => toggleCard(artist.id)}
             >
               <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   <div className="flex items-center justify-center w-6 h-6 bg-primary/10 rounded-full text-primary font-bold text-xs flex-shrink-0">
                     {index === 0 ? <Crown className="w-3 h-3" /> : index + 1}
                   </div>
                   <CardTitle className="text-base text-primary truncate">{artist.name}</CardTitle>
+                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${artist.source === 'spotify' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                    {getSourceLabel(artist.source)}
+                  </div>
                 </div>
                 {expandedCard === artist.id ? (
                   <ChevronUp className="h-4 w-4 text-primary" />
@@ -148,29 +165,33 @@ export function Artists() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground mb-1">
-                      {artist.followers?.total ? formatFollowers(artist.followers.total) : 'Popular artist on Spotify'}
+                      {artist.followers ? formatFollowers(artist.followers) : `Popular artist on ${getSourceLabel(artist.source)}`}
                     </p>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {artist.genres?.slice(0, 2).map((genre, genreIndex) => (
-                        <span 
-                          key={genreIndex}
-                          className="px-2 py-0.5 bg-accent/10 rounded-full text-xs text-primary"
-                        >
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        Popularity: {artist.popularity}/100
-                      </p>
-                      <div className="w-full bg-accent/20 rounded-full h-1.5 mt-1">
-                        <div 
-                          className="bg-primary h-1.5 rounded-full transition-all duration-300" 
-                          style={{ width: `${artist.popularity}%` }}
-                        />
+                    {artist.genres && artist.genres.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {artist.genres.slice(0, 2).map((genre, genreIndex) => (
+                          <span 
+                            key={genreIndex}
+                            className="px-2 py-0.5 bg-accent/10 rounded-full text-xs text-primary"
+                          >
+                            {genre}
+                          </span>
+                        ))}
                       </div>
-                    </div>
+                    )}
+                    {artist.popularity && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          Popularity: {artist.popularity}/100
+                        </p>
+                        <div className="w-full bg-accent/20 rounded-full h-1.5 mt-1">
+                          <div 
+                            className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                            style={{ width: `${artist.popularity}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -186,13 +207,14 @@ export function Artists() {
                       <Button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          openSpotifyArtist(artist.external_urls.spotify);
+                          openArtistLink(artist.externalUrl);
                         }}
                         variant="outline"
                         size="sm"
                         className="text-xs px-2 py-1 h-7"
                       >
-                        Open in Spotify
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        Open in {getSourceLabel(artist.source)}
                       </Button>
                     </div>
 
@@ -218,12 +240,12 @@ export function Artists() {
                         <div className="p-2 bg-accent/10 rounded-md">
                           <p className="text-xs text-muted-foreground">Followers</p>
                           <p className="text-xs font-semibold text-primary">
-                            {artist.followers?.total ? formatFollowers(artist.followers.total) : 'N/A'}
+                            {artist.followers ? formatFollowers(artist.followers) : 'N/A'}
                           </p>
                         </div>
                         <div className="p-2 bg-accent/10 rounded-md">
                           <p className="text-xs text-muted-foreground">Popularity</p>
-                          <p className="text-xs font-semibold text-primary">{artist.popularity}/100</p>
+                          <p className="text-xs font-semibold text-primary">{artist.popularity ? `${artist.popularity}/100` : 'N/A'}</p>
                         </div>
                       </div>
                     </div>

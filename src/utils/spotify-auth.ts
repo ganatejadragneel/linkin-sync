@@ -55,6 +55,7 @@ export const initiateSpotifyLogin = async () => {
       code_challenge_method: 'S256',
       code_challenge: codeChallenge,
       redirect_uri: redirectUri,
+      show_dialog: 'true',
     };
 
     authUrl.search = new URLSearchParams(params).toString();
@@ -98,6 +99,59 @@ export const getAccessToken = async (code: string): Promise<any> => {
     return data;
   } catch (error) {
     console.error('Get access token error:', error);
+    throw error;
+  }
+};
+
+// Refresh access token
+export const refreshSpotifyToken = async (): Promise<any> => {
+  try {
+    const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
+    const refreshToken = storageService.getRefreshToken();
+
+    console.log('Refresh token function called. Client ID:', !!clientId, 'Refresh Token:', !!refreshToken);
+
+    if (!clientId || !refreshToken) {
+      throw new Error('Missing required parameters for token refresh');
+    }
+
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      
+      // If refresh token is invalid, clear auth data
+      if (errorData.error === 'invalid_grant') {
+        storageService.clearAuthData();
+        throw new Error('Refresh token expired. Please log in again.');
+      }
+      
+      throw new Error(`Token refresh failed: ${errorData.error_description || errorData.error}`);
+    }
+
+    const data = await response.json();
+    
+    // Update stored access token
+    storageService.setAccessToken(data.access_token);
+    
+    // Update refresh token if provided
+    if (data.refresh_token) {
+      storageService.setRefreshToken(data.refresh_token);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Refresh token error:', error);
     throw error;
   }
 };

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { updateNowPlaying } from '../services/lyricService';
+import { storageService } from '../services/storage.service';
 
 interface PlayerContextType {
   currentTrack: any;
@@ -40,7 +41,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const playTrack = async (trackUri: string) => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) throw new Error('Not authenticated');
 
       // Start playback using Spotify API
@@ -74,7 +75,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const pauseTrack = async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) throw new Error('Not authenticated');
 
       await fetch('https://api.spotify.com/v1/me/player/pause', {
@@ -92,7 +93,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const resumeTrack = async () => {
     try {
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = storageService.getAccessToken();
       if (!accessToken) throw new Error('Not authenticated');
 
       await fetch('https://api.spotify.com/v1/me/player/play', {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { storageService } from '../services/storage.service';
 
 declare global {
   interface Window {
@@ -17,7 +18,7 @@ export function useSpotifyPlayer() {
       const player = new window.Spotify.Player({
         name: 'Linkin Sync Web Player',
         getOAuthToken: (cb: (token: string) => void) => {
-          const token = localStorage.getItem('access_token');
+          const token = storageService.getAccessToken();
           if (token) {
             cb(token);
           }
@@ -27,7 +28,7 @@ export function useSpotifyPlayer() {
 
       player.addListener('ready', ({ device_id }: { device_id: string }) => {
         console.log('Ready with Device ID', device_id);
-        localStorage.setItem('spotify_device_id', device_id);
+        storageService.setDeviceId(device_id);
         setIsReady(true);
       });
 

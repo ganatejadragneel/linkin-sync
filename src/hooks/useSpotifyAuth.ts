@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { storageService } from '../services/storage.service';
 
 export function useSpotifyAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -6,18 +7,12 @@ export function useSpotifyAuth() {
 
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem('access_token');
-      const profile = localStorage.getItem('user_profile');
+      const token = storageService.getAccessToken();
+      const profile = storageService.getUserProfile();
       
       if (token && profile) {
-        try {
-          setUserProfile(JSON.parse(profile));
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('Error parsing user profile:', error);
-          setIsAuthenticated(false);
-          setUserProfile(null);
-        }
+        setUserProfile(profile);
+        setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);
         setUserProfile(null);

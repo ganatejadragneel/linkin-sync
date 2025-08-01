@@ -74,12 +74,44 @@ class StorageService {
     localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
   }
 
+  // YouTube Auth methods
+  getYouTubeAccessToken(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.YOUTUBE_ACCESS_TOKEN);
+  }
+
+  setYouTubeAccessToken(token: string): void {
+    localStorage.setItem(STORAGE_KEYS.YOUTUBE_ACCESS_TOKEN, token);
+  }
+
+  getYouTubeRefreshToken(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.YOUTUBE_REFRESH_TOKEN);
+  }
+
+  setYouTubeRefreshToken(token: string): void {
+    localStorage.setItem(STORAGE_KEYS.YOUTUBE_REFRESH_TOKEN, token);
+  }
+
+  getYouTubeCodeVerifier(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.YOUTUBE_CODE_VERIFIER);
+  }
+
+  setYouTubeCodeVerifier(verifier: string): void {
+    localStorage.setItem(STORAGE_KEYS.YOUTUBE_CODE_VERIFIER, verifier);
+  }
+
   // Clear methods
   clearAuthData(): void {
     this.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
     this.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     this.removeItem(STORAGE_KEYS.USER_PROFILE);
     this.removeItem(STORAGE_KEYS.CODE_VERIFIER);
+  }
+
+  clearYouTubeAuthData(): void {
+    this.removeItem(STORAGE_KEYS.YOUTUBE_ACCESS_TOKEN);
+    this.removeItem(STORAGE_KEYS.YOUTUBE_REFRESH_TOKEN);
+    this.removeItem(STORAGE_KEYS.YOUTUBE_CODE_VERIFIER);
+    this.removeItem(STORAGE_KEYS.YOUTUBE_USER_PROFILE);
   }
 
   clearAll(): void {
@@ -91,6 +123,10 @@ class StorageService {
   // Utility methods
   isAuthenticated(): boolean {
     return !!this.getAccessToken();
+  }
+
+  isYouTubeAuthenticated(): boolean {
+    return !!this.getYouTubeAccessToken();
   }
 }
 

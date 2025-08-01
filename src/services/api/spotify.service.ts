@@ -3,6 +3,7 @@
 import { BaseApiService } from './base.service';
 import { SPOTIFY_API_BASE_URL, SPOTIFY_ENDPOINTS } from '../../constants';
 import { storageService } from '../storage.service';
+import { refreshSpotifyToken } from '../../utils/spotify-auth';
 import {
   SpotifyPlaybackState,
   SpotifyUserProfile,
@@ -15,6 +16,7 @@ import {
   SpotifyPlaylistTracksResponse,
   SpotifyTopArtistsResponse,
   SpotifyRecentlyPlayedResponse,
+  UnifiedArtist,
 } from '../../types';
 
 class SpotifyApiService extends BaseApiService {
@@ -44,10 +46,43 @@ class SpotifyApiService extends BaseApiService {
         headers: authHeaders,
       });
     } catch (error: any) {
-      // Handle token expiration
+      // Handle token expiration - try to refresh first
       if (error.code === '401') {
-        storageService.clearAuthData();
-        throw new Error('Session expired. Please log in again.');
+        const refreshToken = storageService.getRefreshToken();
+        console.log('401 error detected, attempting token refresh. Refresh token available:', !!refreshToken);
+        
+        if (refreshToken) {
+          try {
+            console.log('Attempting to refresh Spotify token...');
+            // Attempt to refresh the token
+            await refreshSpotifyToken();
+            console.log('Token refresh successful');
+            
+            // Retry the original request with new token
+            const newAccessToken = storageService.getAccessToken();
+            if (newAccessToken) {
+              const newAuthHeaders = {
+                'Authorization': `Bearer ${newAccessToken}`,
+                ...options.headers,
+              };
+              
+              return await super.request<T>(endpoint, {
+                ...options,
+                headers: newAuthHeaders,
+              });
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            // If refresh fails, clear auth data and throw error
+            storageService.clearAuthData();
+            throw new Error('Session expired. Please log in again.');
+          }
+        } else {
+          console.log('No refresh token available, clearing auth data');
+          // No refresh token available, clear auth data
+          storageService.clearAuthData();
+          throw new Error('Session expired. Please log in again.');
+        }
       }
       throw error;
     }
@@ -209,6 +244,77 @@ class SpotifyApiService extends BaseApiService {
       `/me/player/recently-played?limit=${limit}`
     );
     return response.data;
+  }
+
+  // Convert Spotify artist to unified format
+  convertToUnifiedArtist(spotifyArtist: SpotifyArtist): UnifiedArtist {
+    const getImageUrl = (): string | null => {
+      if (spotifyArtist.images && spotifyArtist.images.length > 0) {
+        // Return the medium-sized image (usually the middle one)
+        const mediumImage = spotifyArtist.images[1] || spotifyArtist.images[0];
+        return mediumImage?.url || null;
+      }
+      return null;
+    };
+
+    return {
+      id: spotifyArtist.id,
+      name: spotifyArtist.name,
+      imageUrl: getImageUrl(),
+      followers: spotifyArtist.followers?.total,
+      popularity: spotifyArtist.popularity,
+      genres: spotifyArtist.genres,
+      source: 'spotify',
+      externalUrl: spotifyArtist.external_urls.spotify,
+      originalData: spotifyArtist,
+    };
+  }
+
+  // Get unified artists from Spotify
+  async getUnifiedArtists(limit = 10): Promise<UnifiedArtist[]> {
+    try {
+      console.log('Spotify API: Fetching top artists...');
+      
+      // Try the official top artists endpoint first
+      try {
+        const response = await this.getTopArtists('short_term', limit);
+        console.log('Spotify API: Top artists response:', response);
+        const unifiedArtists = response.items.map(artist => this.convertToUnifiedArtist(artist));
+        console.log('Spotify API: Converted to unified artists:', unifiedArtists);
+        return unifiedArtists;
+      } catch (topArtistsError) {
+        console.log('Spotify API: Top artists endpoint failed, trying fallback...', topArtistsError);
+        
+        // Fallback: Use recently played tracks to determine top artists
+        const recentlyPlayed = await this.getRecentlyPlayedTracks(50);
+        console.log('Spotify API: Recently played response:', recentlyPlayed);
+        
+        // Count artist occurrences
+        const artistCounts = new Map<string, { artist: SpotifyArtist; count: number }>();
+        
+        recentlyPlayed.items.forEach(item => {
+          item.track.artists.forEach(artist => {
+            if (artistCounts.has(artist.id)) {
+              artistCounts.get(artist.id)!.count++;
+            } else {
+              artistCounts.set(artist.id, { artist, count: 1 });
+            }
+          });
+        });
+        
+        // Sort by count and take top limit
+        const topArtistsByCount = Array.from(artistCounts.values())
+          .sort((a, b) => b.count - a.count)
+          .slice(0, limit)
+          .map(item => this.convertToUnifiedArtist(item.artist));
+        
+        console.log('Spotify API: Top artists from recently played:', topArtistsByCount);
+        return topArtistsByCount;
+      }
+    } catch (error) {
+      console.error('Spotify API: Failed to fetch unified artists:', error);
+      throw error;
+    }
   }
 }
 
