@@ -239,6 +239,64 @@ class YouTubeApiService extends BaseApiService {
     };
   }
 
+  // Search for YouTube Music tracks
+  async searchTracks(query: string, limit = 20): Promise<UnifiedTrack[]> {
+    try {
+      const params = new URLSearchParams({
+        part: 'snippet',
+        q: query,
+        type: 'video',
+        videoCategoryId: '10', // Music category
+        maxResults: limit.toString(),
+      });
+
+      console.log('YouTube API: Searching for tracks with query:', query);
+      const response = await this.get<any>(`/search?${params}`);
+      console.log('YouTube API: Search response:', response.data);
+
+      // Convert search results to unified tracks
+      const tracks: UnifiedTrack[] = response.data.items
+        .filter((item: any) => {
+          // Additional filtering to ensure we get music content
+          const title = item.snippet?.title?.toLowerCase() || '';
+          const channelTitle = item.snippet?.channelTitle?.toLowerCase() || '';
+          const description = item.snippet?.description?.toLowerCase() || '';
+          
+          // Filter out non-music content
+          const nonMusicKeywords = ['podcast', 'interview', 'reaction', 'review', 'tutorial', 'gameplay'];
+          const isLikelyNonMusic = nonMusicKeywords.some(keyword => 
+            title.includes(keyword) || description.includes(keyword)
+          );
+          
+          // Prioritize official music channels and music-related content
+          const musicChannelKeywords = ['vevo', 'official', 'music', 'records', 'entertainment'];
+          const isLikelyMusic = musicChannelKeywords.some(keyword => 
+            channelTitle.includes(keyword)
+          ) || channelTitle.includes(item.snippet?.channelTitle?.replace(/\s+/g, '').toLowerCase());
+          
+          return !isLikelyNonMusic || isLikelyMusic;
+        })
+        .map((item: any) => ({
+          id: item.id.videoId,
+          name: item.snippet?.title || 'Untitled',
+          artist: item.snippet?.channelTitle || 'Unknown Artist',
+          duration: 'Unknown', // Search API doesn't provide duration
+          imageUrl: item.snippet?.thumbnails?.high?.url || 
+                   item.snippet?.thumbnails?.medium?.url || 
+                   item.snippet?.thumbnails?.default?.url || 
+                   null,
+          source: 'youtube' as const,
+          externalUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+          originalData: item,
+        }));
+
+      return tracks;
+    } catch (error) {
+      console.error('Failed to search YouTube tracks:', error);
+      throw error;
+    }
+  }
+
   // Get unified artists from user's playlists (extracting unique channels)
   async getUnifiedArtists(): Promise<UnifiedArtist[]> {
     try {

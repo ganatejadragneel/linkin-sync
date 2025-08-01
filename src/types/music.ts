@@ -5,6 +5,7 @@ export interface NowPlaying {
   track_name: string;
   artist: string;
   album: string;
+  source?: string;  // Optional, 'spotify' or 'youtube'
   lyrics?: string;  // Optional, populated by backend
   updated_at?: string;  // Optional, ISO date string
 }
@@ -14,6 +15,7 @@ export interface PlayHistory {
   track_name: string;
   artist: string;
   album: string;
+  source?: string;  // Optional, 'spotify' or 'youtube'
   played_at: string;  // ISO date string from backend time.Time
 }
 

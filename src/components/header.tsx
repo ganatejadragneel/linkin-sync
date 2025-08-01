@@ -6,18 +6,31 @@ import { SearchBar } from './header/SearchBar';
 import { UserMenu } from './header/UserMenu';
 import { useUserProfile } from '../hooks/useUserProfile';
 
-export function Header() {
+interface HeaderProps {
+  onSearch?: (query: string) => void;
+}
+
+export function Header({ onSearch }: HeaderProps) {
   const { userProfile, login, logout } = useUserProfile();
 
   const handleSearch = (query: string) => {
-    // TODO: Implement search functionality
     console.log('Search query:', query);
+    if (onSearch) {
+      onSearch(query);
+    }
   };
 
   return (
-    <header className="flex items-center justify-between p-4 bg-black/90 backdrop-blur supports-[backdrop-filter]:bg-black/80 border-b border-border/50">
+    <header className="flex items-center justify-between p-4 bg-black/90 backdrop-blur supports-[backdrop-filter]:bg-black/80 border-b border-border/50 relative z-[70]">
       <div className="flex items-center space-x-4">
-        <h1 className="text-2xl font-bold text-primary">Linkin Sync</h1>
+        <div className="flex items-center space-x-3">
+          <img 
+            src="/LS_logo.png" 
+            alt="Linkin Sync" 
+            className="h-8 w-8"
+          />
+          <h1 className="text-2xl font-bold text-primary">Linkin Sync</h1>
+        </div>
         <SearchBar onSearch={handleSearch} />
       </div>
       

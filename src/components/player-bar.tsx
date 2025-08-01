@@ -11,6 +11,7 @@ import {
 } from '../utils/spotify-playback';
 import { updateNowPlaying } from '../services/lyricService';
 import { useToast } from './ui/use-toast';
+import { storageService } from '../services/storage.service';
 import { useMusicPlayer } from '../contexts/MusicPlayerContext';
 import { Slider } from './ui/slider';
 
@@ -246,6 +247,14 @@ export function PlayerBar() {
   };
 
   const updatePlaybackState = async () => {
+    // Check if Spotify is authenticated before making API calls
+    const accessToken = storageService.getAccessToken();
+    if (!accessToken) {
+      // Clear any existing playback state if not authenticated
+      setPlaybackState(null);
+      return;
+    }
+
     try {
       const state = await getCurrentPlayback();
       
@@ -262,8 +271,16 @@ export function PlayerBar() {
           await updateBackendWithCurrentTrack(state);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get playback state:', error);
+      
+      // Handle authentication errors
+      if (error.message && error.message.includes('No access token')) {
+        console.log('Spotify token expired or unavailable, clearing playback state');
+        setPlaybackState(null);
+        // Optionally clear the stored token
+        storageService.clearAuthData();
+      }
     }
   };
 
@@ -319,10 +336,18 @@ export function PlayerBar() {
   };
 
   useEffect(() => {
-    updatePlaybackState();
-    // Update more frequently (every 2 seconds) to ensure smoother state updates
-    const interval = setInterval(updatePlaybackState, 2000);
-    return () => clearInterval(interval);
+    // Only start polling if we have a Spotify token
+    if (storageService.getAccessToken()) {
+      updatePlaybackState();
+      // Update more frequently (every 2 seconds) to ensure smoother state updates
+      const interval = setInterval(() => {
+        // Check token again before each poll
+        if (storageService.getAccessToken()) {
+          updatePlaybackState();
+        }
+      }, 2000);
+      return () => clearInterval(interval);
+    }
   }, []);
 
   // Also update backend whenever playbackState changes (only for non-unified tracks)
@@ -342,7 +367,7 @@ export function PlayerBar() {
         // Stop YouTube if playing
         if (youtubePlayer) {
           console.log('Stopping YouTube player');
-          youtubePlayer.pauseVideo();
+          youtubePlayer.stopVideo(); // Use stopVideo instead of pauseVideo to fully stop
         }
         
         console.log('Playing Spotify track:', track.id);
@@ -350,6 +375,9 @@ export function PlayerBar() {
         const deviceId = localStorage.getItem('spotify_device_id');
         
         try {
+          // First pause any playing track
+          await pausePlayback();
+          
           // Use the API to start playback on our device
           const url = deviceId 
             ? `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`
@@ -377,10 +405,21 @@ export function PlayerBar() {
           console.error('Spotify playback error:', error);
         }
       } else if (track.source === 'youtube') {
-        // Stop Spotify if playing
+        // Stop Spotify if playing  
         if (spotifyPlayer) {
-          console.log('Stopping Spotify player');
-          await spotifyPlayer.pause();
+          console.log('Stopping Spotify player via SDK');
+          try {
+            await spotifyPlayer.pause();
+          } catch (e) {
+            console.error('Error pausing Spotify SDK:', e);
+          }
+        }
+        
+        // Also pause via API to ensure it stops
+        try {
+          await pausePlayback();
+        } catch (e) {
+          console.error('Error pausing Spotify via API:', e);
         }
         
         console.log('Playing YouTube track:', track.id);
@@ -438,6 +477,23 @@ export function PlayerBar() {
         // Handle unified track playback
         if (currentTrack.source === 'spotify' && spotifyPlayer) {
           console.log('Toggling Spotify playback');
+          
+          // Check if we're still authenticated before making Spotify calls
+          const accessToken = storageService.getAccessToken();
+          if (!accessToken) {
+            toast({
+              title: "Spotify Not Connected",
+              description: "Please log in to Spotify to control playback.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          // Ensure YouTube is stopped
+          if (youtubePlayer) {
+            youtubePlayer.stopVideo();
+          }
+          
           if (isPlaying) {
             await spotifyPlayer.pause();
             setIsPlaying(false);
@@ -451,7 +507,7 @@ export function PlayerBar() {
             const response = await fetch(url, {
               method: 'PUT',
               headers: {
-                'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`,
+                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
               }
             });
@@ -465,6 +521,23 @@ export function PlayerBar() {
           }
         } else if (currentTrack.source === 'youtube' && youtubePlayer) {
           console.log('Toggling YouTube playback');
+          // Ensure Spotify is stopped
+          if (spotifyPlayer) {
+            try {
+              await spotifyPlayer.pause();
+            } catch (e) {
+              console.error('Error pausing Spotify:', e);
+            }
+          }
+          try {
+            // Only try to pause Spotify API if we have a token
+            if (storageService.getAccessToken()) {
+              await pausePlayback();
+            }
+          } catch (e) {
+            console.error('Error pausing Spotify API:', e);
+          }
+          
           if (isPlaying) {
             youtubePlayer.pauseVideo();
           } else {
@@ -477,20 +550,36 @@ export function PlayerBar() {
           console.log('No suitable player for current track');
         }
       } else if (playbackState?.is_playing) {
-        // Fallback to Spotify-only mode
+        // Fallback to Spotify-only mode - check token first
         console.log('Using Spotify fallback mode');
-        await pausePlayback();
-      } else if (playbackState?.item?.uri) {
+        if (storageService.getAccessToken()) {
+          await pausePlayback();
+        }
+      } else if (playbackState?.item?.uri && storageService.getAccessToken()) {
         await startPlayback(playbackState.item.uri);
       }
-      await updatePlaybackState();
-    } catch (error) {
+      
+      // Only update playback state if we have a Spotify token
+      if (storageService.getAccessToken()) {
+        await updatePlaybackState();
+      }
+    } catch (error: any) {
       console.error('Failed to toggle playback:', error);
-      toast({
-        title: "Playback Error",
-        description: "Failed to control playback. Make sure you have an active device.",
-        variant: "destructive",
-      });
+      
+      // Handle specific authentication errors
+      if (error.message && error.message.includes('No access token')) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to Spotify to control playback.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Playback Error",
+          description: "Failed to control playback. Make sure you have an active device.",
+          variant: "destructive",
+        });
+      }
     }
   };
 

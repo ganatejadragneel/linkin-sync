@@ -22,6 +22,7 @@ function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('featured');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
@@ -31,6 +32,11 @@ function App() {
   const toggleChatbot = () => {
     setIsChatbotOpen(!isChatbotOpen);
     if (isChatOpen) setIsChatOpen(false);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setActiveSection('search'); // Switch to search results view
   };
 
   // Check if we're on the callback routes
@@ -53,7 +59,7 @@ function App() {
                 {error}
               </div>
             )}
-            <Header />
+            <Header onSearch={handleSearch} />
             <div className="flex flex-1">
               <Sidebar 
                 activeSection={activeSection} 
@@ -62,7 +68,7 @@ function App() {
               <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
                 isChatOpen ? 'mr-64' : ''} ${isChatbotOpen ? 'mr-1/3' : ''
               }`}>
-                {activeSection === 'featured' && <MainContent />}
+                {(activeSection === 'featured' || activeSection === 'search') && <MainContent searchQuery={searchQuery} />}
                 {activeSection === 'about' && <About />}
                 {activeSection === 'artists' && <Artists />}
                 {activeSection === 'playlists' && <Playlists />}

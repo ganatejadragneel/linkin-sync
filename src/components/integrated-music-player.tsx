@@ -124,12 +124,26 @@ export function IntegratedMusicPlayer({
 
     try {
       if (currentTrack.source === 'spotify' && spotifyPlayer) {
+        // Make sure YouTube is paused
+        if (youtubePlayer) {
+          youtubePlayer.pauseVideo();
+        }
+        
         if (isPlaying) {
           await spotifyPlayer.pause();
         } else {
           await spotifyPlayer.resume();
         }
       } else if (currentTrack.source === 'youtube' && youtubePlayer) {
+        // Make sure Spotify is paused
+        if (spotifyPlayer) {
+          try {
+            await spotifyPlayer.pause();
+          } catch (e) {
+            console.error('Error pausing Spotify:', e);
+          }
+        }
+        
         if (isPlaying) {
           youtubePlayer.pauseVideo();
         } else {
@@ -144,21 +158,38 @@ export function IntegratedMusicPlayer({
   // Play a specific track
   const playTrack = async (track: UnifiedTrack) => {
     try {
-      if (track.source === 'spotify' && spotifyPlayer) {
-        await spotifyPlayer.pause(); // Stop any current playback
-        // For Spotify, we need the track URI
-        const trackUri = `spotify:track:${track.id}`;
-        await fetch(`https://api.spotify.com/v1/me/player/play`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            uris: [trackUri]
-          })
-        });
+      // Stop any currently playing track from the other source
+      if (track.source === 'spotify') {
+        // Stop YouTube if playing
+        if (youtubePlayer) {
+          youtubePlayer.pauseVideo();
+        }
+        
+        if (spotifyPlayer) {
+          await spotifyPlayer.pause(); // Stop any current playback
+          // For Spotify, we need the track URI
+          const trackUri = `spotify:track:${track.id}`;
+          await fetch(`https://api.spotify.com/v1/me/player/play`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('spotify_access_token')}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              uris: [trackUri]
+            })
+          });
+        }
       } else if (track.source === 'youtube') {
+        // Stop Spotify if playing
+        if (spotifyPlayer) {
+          try {
+            await spotifyPlayer.pause();
+          } catch (e) {
+            console.error('Error pausing Spotify:', e);
+          }
+        }
+        
         if (youtubePlayer) {
           youtubePlayer.loadVideoById(track.id);
         } else {
@@ -249,10 +280,18 @@ export function IntegratedMusicPlayer({
     };
   }, [isPlaying, currentTrack, youtubePlayer]);
 
+  // Handle track source changes
+  useEffect(() => {
+    // Reset playing state when track changes to ensure proper player state
+    setIsPlaying(false);
+    setProgress(0);
+    setDuration(0);
+  }, [currentTrack?.id]);
+
   if (!currentTrack) {
     return (
-      <div className={`bg-card border-t border-border p-4 ${className}`}>
-        <div className="flex items-center justify-center text-muted-foreground">
+      <div className={`bg-card border-t border-border p-3 ${className}`}>
+        <div className="flex items-center justify-center text-muted-foreground text-sm">
           Select a song to start playing
         </div>
       </div>
@@ -260,14 +299,14 @@ export function IntegratedMusicPlayer({
   }
 
   return (
-    <div className={`bg-card border-t border-border p-4 ${className}`}>
+    <div className={`bg-card border-t border-border p-3 ${className}`}>
       {/* Hidden YouTube player */}
       <div ref={youtubePlayerRef} style={{ display: 'none' }}></div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {/* Track Info */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-12 h-12 bg-accent/10 rounded overflow-hidden flex-shrink-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-accent/10 rounded-md overflow-hidden flex-shrink-0 shadow-sm">
             {currentTrack.imageUrl ? (
               <img 
                 src={currentTrack.imageUrl} 
@@ -275,35 +314,35 @@ export function IntegratedMusicPlayer({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Play className="w-6 h-6 text-muted-foreground" />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent/20 to-accent/5">
+                <Play className="w-4 h-4 text-muted-foreground" />
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-primary truncate">{currentTrack.name}</div>
-            <div className="text-sm text-muted-foreground truncate">{currentTrack.artist}</div>
+            <div className="font-medium text-primary truncate text-sm leading-tight">{currentTrack.name}</div>
+            <div className="text-xs text-muted-foreground truncate">{currentTrack.artist}</div>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handlePrevious}>
-            <SkipBack className="w-4 h-4" />
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={handlePrevious} className="h-8 w-8 p-0 hover:bg-accent/80">
+            <SkipBack className="w-3.5 h-3.5" />
           </Button>
           
-          <Button variant="ghost" size="sm" onClick={togglePlayPause}>
-            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+          <Button variant="ghost" size="sm" onClick={togglePlayPause} className="h-9 w-9 p-0 hover:bg-primary/10 hover:text-primary">
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </Button>
           
-          <Button variant="ghost" size="sm" onClick={handleNext}>
-            <SkipForward className="w-4 h-4" />
+          <Button variant="ghost" size="sm" onClick={handleNext} className="h-8 w-8 p-0 hover:bg-accent/80">
+            <SkipForward className="w-3.5 h-3.5" />
           </Button>
         </div>
 
         {/* Progress */}
-        <div className="flex items-center gap-2 flex-1 max-w-md">
-          <span className="text-xs text-muted-foreground w-10 text-right">
+        <div className="flex items-center gap-2 flex-1 max-w-sm">
+          <span className="text-xs text-muted-foreground w-8 text-right font-mono">
             {formatTime(progress)}
           </span>
           <div className="flex-1">
@@ -311,27 +350,27 @@ export function IntegratedMusicPlayer({
               value={[progress]}
               max={duration}
               step={1000}
-              className="w-full"
+              className="w-full h-1"
               disabled={!duration}
             />
           </div>
-          <span className="text-xs text-muted-foreground w-10">
+          <span className="text-xs text-muted-foreground w-8 font-mono">
             {formatTime(duration)}
           </span>
         </div>
 
         {/* Volume */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={toggleMute}>
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={toggleMute} className="h-8 w-8 p-0 hover:bg-accent/80">
+            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
           </Button>
-          <div className="w-20">
+          <div className="w-16">
             <Slider
               value={[isMuted ? 0 : volume]}
               max={1}
               step={0.1}
               onValueChange={handleVolumeChange}
-              className="w-full"
+              className="w-full h-1"
             />
           </div>
         </div>

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { X, Send, Loader2 } from 'lucide-react';
+import { X, Send, Loader2, RefreshCw } from 'lucide-react';
 import { sendChatMessage, getNowPlaying } from '../services/lyricService';
 
 interface Message {
@@ -21,12 +21,59 @@ export function LyricChatbot({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   const [currentSong, setCurrentSong] = useState<any>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Fetch the currently playing song when the component mounts
+  const fetchCurrentSong = useCallback(async () => {
+    try {
+      console.log('Lyric Chat: Fetching current song...');
+      const song = await getNowPlaying();
+      console.log('Lyric Chat: Got song from backend:', song);
+      setCurrentSong(song);
+      
+      // If we have a new song, add a message about it
+      if (song && (!currentSong || song.track_id !== currentSong.track_id)) {
+        console.log('Lyric Chat: Adding message for new song:', song.track_name);
+        setMessages(prev => [
+          ...prev,
+          { 
+            id: Date.now(), 
+            sender: 'bot', 
+            text: `I'm now ready to answer questions about "${song.track_name}" by ${song.artist}${song.source ? ` (${song.source})` : ''}.`
+          }
+        ]);
+      } else if (!song) {
+        console.log('Lyric Chat: No song currently playing');
+        setMessages(prev => [
+          ...prev,
+          { 
+            id: Date.now(), 
+            sender: 'bot', 
+            text: 'No song is currently playing. Please start playing a song to get lyrics analysis.'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Lyric Chat: Error fetching current song:', error);
+      setMessages(prev => [
+        ...prev,
+        { 
+          id: Date.now(), 
+          sender: 'bot', 
+          text: `Error fetching current song: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }
+      ]);
+    }
+  }, [currentSong]);
+
+  // Fetch the currently playing song when the component mounts or when opened
   useEffect(() => {
     if (isOpen) {
       fetchCurrentSong();
+      
+      // Set up periodic refresh every 10 seconds when open
+      const interval = setInterval(fetchCurrentSong, 10000);
+      
+      return () => clearInterval(interval);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchCurrentSong]);
 
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
@@ -37,27 +84,6 @@ export function LyricChatbot({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       }
     }
   }, [messages]);
-
-  const fetchCurrentSong = async () => {
-    try {
-      const song = await getNowPlaying();
-      setCurrentSong(song);
-      
-      // If we have a new song, add a message about it
-      if (song && (!currentSong || song.track_id !== currentSong.track_id)) {
-        setMessages(prev => [
-          ...prev,
-          { 
-            id: Date.now(), 
-            sender: 'bot', 
-            text: `I'm now ready to answer questions about "${song.track_name}" by ${song.artist}.`
-          }
-        ]);
-      }
-    } catch (error) {
-      console.error('Error fetching current song:', error);
-    }
-  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,12 +140,24 @@ export function LyricChatbot({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   return (
     <div className="fixed right-0 top-16 bottom-32 w-1/3 bg-card text-card-foreground shadow-lg flex flex-col z-[60]">
       <div className="flex justify-between items-center p-4 bg-primary text-primary-foreground">
-        <div>
+        <div className="flex-1">
           <h2 className="text-lg font-semibold">Lyric Assistant</h2>
           {currentSong && (
-            <p className="text-xs">Now playing: {currentSong.track_name} by {currentSong.artist}</p>
+            <p className="text-xs">Now playing: {currentSong.track_name} by {currentSong.artist}{currentSong.source ? ` (${currentSong.source})` : ''}</p>
+          )}
+          {!currentSong && (
+            <p className="text-xs text-primary-foreground/70">No song detected</p>
           )}
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={fetchCurrentSong}
+          className="text-primary-foreground hover:text-primary hover:bg-secondary mr-2"
+          title="Refresh current song"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
         <Button 
           variant="ghost" 
           size="icon" 

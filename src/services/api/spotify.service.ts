@@ -165,6 +165,14 @@ class SpotifyApiService extends BaseApiService {
     return response.data.artists.items;
   }
 
+  async searchTracks(query: string, limit = 20): Promise<SpotifyTrack[]> {
+    const encodedQuery = encodeURIComponent(query);
+    const response = await this.get<any>(
+      `${SPOTIFY_ENDPOINTS.SEARCH}?q=${encodedQuery}&type=track&limit=${limit}`
+    );
+    return response.data.tracks.items;
+  }
+
   async getTrack(trackId: string): Promise<SpotifyTrack> {
     const response = await this.get<SpotifyTrack>(`/tracks/${trackId}`);
     return response.data;

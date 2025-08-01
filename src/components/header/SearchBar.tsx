@@ -10,9 +10,15 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ placeholder = "Search...", onSearch }: SearchBarProps) {
+  const [searchValue, setSearchValue] = React.useState('');
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (onSearch) {
-      onSearch(e.target.value);
+    setSearchValue(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchValue.trim() && onSearch) {
+      onSearch(searchValue.trim());
     }
   };
 
@@ -22,7 +28,9 @@ export function SearchBar({ placeholder = "Search...", onSearch }: SearchBarProp
       <Input
         type="search"
         placeholder={placeholder}
+        value={searchValue}
         onChange={handleSearch}
+        onKeyDown={handleKeyDown}
         className="pl-8 bg-muted/50 text-foreground placeholder:text-muted-foreground border-border/50 focus:border-primary/50"
       />
     </div>

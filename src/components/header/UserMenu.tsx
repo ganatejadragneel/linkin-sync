@@ -60,18 +60,18 @@ export function UserMenu({ userProfile, onLogin, onLogout }: UserMenuProps) {
         </Button>
 
         {showAuthOptions && (
-          <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-card border border-border z-50">
-            <div className="py-1">
+          <div className="absolute right-0 mt-2 w-56 rounded-md shadow-xl bg-card border border-border z-[80] backdrop-blur-sm">
+            <div className="py-1 rounded-md overflow-hidden">
               <button
                 onClick={onLogin}
-                className="w-full text-left px-4 py-3 text-sm text-muted-foreground hover:bg-accent/50 hover:text-primary flex items-center gap-3"
+                className="w-full text-left px-4 py-3 text-sm text-card-foreground hover:bg-accent/50 hover:text-primary flex items-center gap-3 transition-colors duration-200"
               >
                 <Music className="h-4 w-4 text-green-500" />
                 Login with Spotify
               </button>
               <button
                 onClick={handleYouTubeLogin}
-                className="w-full text-left px-4 py-3 text-sm text-muted-foreground hover:bg-accent/50 hover:text-primary flex items-center gap-3"
+                className="w-full text-left px-4 py-3 text-sm text-card-foreground hover:bg-accent/50 hover:text-primary flex items-center gap-3 transition-colors duration-200"
               >
                 <Youtube className="h-4 w-4 text-red-500" />
                 Login with YouTube Music
@@ -95,7 +95,7 @@ export function UserMenu({ userProfile, onLogin, onLogout }: UserMenuProps) {
       </Button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-card border border-border z-50">
+        <div className="absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-card border border-border z-[80]">
           <div className="py-1">
             {userProfile && (
               <div className="px-4 py-2 text-sm text-muted-foreground border-b border-border">
