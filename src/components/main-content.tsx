@@ -7,6 +7,7 @@ import { storageService } from '../services/storage.service';
 import { spotifyApiService } from '../services/api/spotify.service';
 import { youtubeApiService } from '../services/api/youtube.service';
 import { UnifiedTrack } from '../types';
+import { useUnifiedPlaylists } from '../hooks/useUnifiedPlaylists';
 import { Loader2, Play, Music, Sparkles, Star, TrendingUp } from 'lucide-react';
 import { useMusicPlayer } from '../contexts/MusicPlayerContext';
 
@@ -57,9 +58,11 @@ const albums = [
 
 interface MainContentProps {
   searchQuery?: string;
+  searchType?: 'general' | 'song-request';
+  isSearchingPlaylists?: boolean;
 }
 
-export function MainContent({ searchQuery }: MainContentProps) {
+export function MainContent({ searchQuery, searchType = 'general', isSearchingPlaylists = false }: MainContentProps) {
   const [selectedAlbum, setSelectedAlbum] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +70,7 @@ export function MainContent({ searchQuery }: MainContentProps) {
   const { playTrack } = useMusicPlayer();
   const spotifyLoggedIn = !!storageService.getAccessToken();
   const youtubeLoggedIn = !!storageService.getYouTubeAccessToken();
+  const { playlists, loading: playlistsLoading } = useUnifiedPlaylists();
 
   const handleAlbumClick = async (album: any) => {
     // Check if user is logged in
@@ -102,11 +106,15 @@ export function MainContent({ searchQuery }: MainContentProps) {
   // Handle search when searchQuery changes
   useEffect(() => {
     if (searchQuery) {
-      performSearch(searchQuery);
+      if (searchType === 'song-request') {
+        performPlaylistSearch(searchQuery);
+      } else {
+        performSearch(searchQuery);
+      }
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery]);
+  }, [searchQuery, searchType]);
 
   const performSearch = async (query: string) => {
     setLoading(true);
@@ -175,6 +183,82 @@ export function MainContent({ searchQuery }: MainContentProps) {
     }
   };
 
+  const performPlaylistSearch = async (query: string) => {
+    setLoading(true);
+    setError(null);
+    const results: UnifiedTrack[] = [];
+
+    try {
+      // Search through user's playlists first
+      for (const playlist of playlists) {
+        try {
+          let playlistTracks: any[] = [];
+          
+          if (playlist.source === 'spotify') {
+            // Get Spotify playlist tracks
+            const tracksResponse = await spotifyApiService.getPlaylistTracks(playlist.id, 50);
+            playlistTracks = tracksResponse.items
+              .map(item => item.track)
+              .filter(track => track && track.name && track.artists);
+          } else if (playlist.source === 'youtube') {
+            // Get YouTube playlist tracks (if API supports it)
+            // TODO: Implement YouTube playlist tracks fetching if available
+            continue; // Skip for now
+          }
+
+          // Search for matching tracks in this playlist
+          const matchingTracks = playlistTracks.filter(track => {
+            const trackName = track.name.toLowerCase();
+            const artistName = track.artists[0]?.name?.toLowerCase() || '';
+            const searchLower = query.toLowerCase();
+            
+            // Fuzzy matching - check if search terms are contained in track name or artist
+            return trackName.includes(searchLower) || 
+                   artistName.includes(searchLower) ||
+                   searchLower.includes(trackName) ||
+                   searchLower.includes(artistName);
+          });
+
+          // Convert to UnifiedTrack format
+          const unifiedTracks: UnifiedTrack[] = matchingTracks.map(track => ({
+            id: track.id,
+            name: track.name,
+            artist: track.artists[0]?.name || 'Unknown Artist',
+            album: track.album?.name,
+            duration: track.duration_ms?.toString() || '0',
+            imageUrl: track.album?.images?.[0]?.url || null,
+            source: playlist.source as 'spotify' | 'youtube',
+            externalUrl: track.external_urls?.spotify || '',
+            originalData: { ...track, playlistName: playlist.name }, // Store playlist context in originalData
+          }));
+
+          results.push(...unifiedTracks);
+        } catch (playlistError) {
+          console.error(`Error searching playlist ${playlist.name}:`, playlistError);
+        }
+      }
+
+      // Limit to 20 results as specified
+      const limitedResults = results.slice(0, 20);
+      setSearchResults(limitedResults);
+
+      if (limitedResults.length === 0) {
+        // If no results in playlists, fall back to general search
+        setError(`No matches found in your playlists. Searching the catalog...`);
+        await performSearch(query);
+      } else {
+        setError(null);
+      }
+    } catch (err) {
+      console.error('Playlist search error:', err);
+      setError('Failed to search playlists. Trying general search...');
+      // Fallback to general search
+      await performSearch(query);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleTrackPlay = async (track: UnifiedTrack) => {
     try {
       await playTrack(track);
@@ -187,7 +271,12 @@ export function MainContent({ searchQuery }: MainContentProps) {
   return (
     <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
       <h2 className="text-xl font-bold mb-4 text-primary">
-        {searchQuery ? `Results for "${searchQuery}"` : 'Featured Content'}
+        {searchQuery 
+          ? searchType === 'song-request' 
+            ? `Found songs for "${searchQuery}"` 
+            : `Results for "${searchQuery}"`
+          : 'Featured Content'
+        }
       </h2>
       {searchQuery ? (
         // Search Results View
@@ -216,6 +305,9 @@ export function MainContent({ searchQuery }: MainContentProps) {
                 <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
                 {track.album && (
                   <p className="text-xs text-muted-foreground/70 truncate">{track.album}</p>
+                )}
+                {searchType === 'song-request' && track.originalData?.playlistName && (
+                  <p className="text-xs text-blue-500/70 truncate">From playlist: {track.originalData.playlistName}</p>
                 )}
               </div>
               <div className="flex items-center gap-2">

@@ -16,4 +16,11 @@ export interface ChatResponse {
   answer?: string;  // Backend returns 'answer' field
   response?: string;  // Fallback for compatibility
   error?: string;
+  type?: string;  // "text" | "song_request"
+  song_query?: SongQuery;  // Only present when type is "song_request"
+}
+
+export interface SongQuery {
+  query: string;  // The song name or search query
+  artist?: string;  // Optional artist name
 }

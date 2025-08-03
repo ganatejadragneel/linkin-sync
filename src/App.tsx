@@ -23,6 +23,8 @@ function App() {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('featured');
   const [searchQuery, setSearchQuery] = useState('');
+  const [songSearchQuery, setSongSearchQuery] = useState('');
+  const [isSearchingPlaylists, setIsSearchingPlaylists] = useState(false);
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
@@ -37,6 +39,13 @@ function App() {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setActiveSection('search'); // Switch to search results view
+  };
+
+  const handleSongRequest = (query: string, artist?: string) => {
+    setSongSearchQuery(query);
+    setActiveSection('song-results');
+    setIsSearchingPlaylists(true);
+    // TODO: Implement playlist search functionality
   };
 
   // Check if we're on the callback routes
@@ -68,7 +77,13 @@ function App() {
               <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
                 isChatOpen ? 'mr-64' : ''} ${isChatbotOpen ? 'mr-1/3' : ''
               }`}>
-                {(activeSection === 'featured' || activeSection === 'search') && <MainContent searchQuery={searchQuery} />}
+                {(activeSection === 'featured' || activeSection === 'search' || activeSection === 'song-results') && 
+                  <MainContent 
+                    searchQuery={activeSection === 'song-results' ? songSearchQuery : searchQuery} 
+                    searchType={activeSection === 'song-results' ? 'song-request' : 'general'}
+                    isSearchingPlaylists={isSearchingPlaylists}
+                  />
+                }
                 {activeSection === 'about' && <About />}
                 {activeSection === 'artists' && <Artists />}
                 {activeSection === 'playlists' && <Playlists />}
@@ -82,7 +97,11 @@ function App() {
             />
             <PlayerBar />
             <GlobalChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-            <LyricChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
+            <LyricChatbot 
+              isOpen={isChatbotOpen} 
+              onClose={() => setIsChatbotOpen(false)} 
+              onSongRequest={handleSongRequest}
+            />
             </div>
             <Toaster />
           </MusicPlayerProvider>

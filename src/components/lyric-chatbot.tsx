@@ -4,6 +4,7 @@ import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { X, Send, Loader2, RefreshCw } from 'lucide-react';
 import { sendChatMessage, getNowPlaying } from '../services/lyricService';
+import { ChatResponse } from '../types/chat';
 
 interface Message {
   id: number;
@@ -12,7 +13,13 @@ interface Message {
   isLoading?: boolean;
 }
 
-export function LyricChatbot({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+interface LyricChatbotProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSongRequest?: (query: string, artist?: string) => void;
+}
+
+export function LyricChatbot({ isOpen, onClose, onSongRequest }: LyricChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, sender: 'bot', text: "Hello! I'm your Lyric Assistant. I can help you understand the lyrics of the currently playing song. Ask me anything about the meaning, themes, or context of the song." },
   ]);
@@ -114,6 +121,13 @@ export function LyricChatbot({ isOpen, onClose }: { isOpen: boolean; onClose: ()
     try {
       // Send to backend
       const response = await sendChatMessage(input);
+      
+      // Check if this is a song request
+      if (response.type === 'song_request' && response.song_query && onSongRequest) {
+        // Trigger song search and close chat
+        onSongRequest(response.song_query.query, response.song_query.artist);
+        onClose();
+      }
       
       // Replace loading message with actual response
       setMessages(prev => prev.map(msg => 
