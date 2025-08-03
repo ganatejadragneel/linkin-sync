@@ -677,7 +677,14 @@ export function PlayerBar() {
   // Play current track when it changes
   useEffect(() => {
     if (currentTrack) {
-      playTrack(currentTrack);
+      const playCurrentTrack = async () => {
+        try {
+          await playTrack(currentTrack);
+        } catch (error) {
+          console.error('Failed to play current track:', error);
+        }
+      };
+      playCurrentTrack();
     }
   }, [currentTrack]);
 

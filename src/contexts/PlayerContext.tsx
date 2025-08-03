@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { updateNowPlaying } from '../services/lyricService';
 import { storageService } from '../services/storage.service';
+import { spotifyDeviceManager } from '../utils/spotify-device-manager';
 
 interface PlayerContextType {
   currentTrack: any;
@@ -44,32 +45,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const accessToken = storageService.getAccessToken();
       if (!accessToken) throw new Error('Not authenticated');
 
-      // Start playback using Spotify API
-      await fetch('https://api.spotify.com/v1/me/player/play', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          uris: [trackUri]
-        })
-      });
+      // Use device manager to ensure proper device targeting
+      await spotifyDeviceManager.startPlaybackOnDevice(trackUri);
 
       // Get current playing track
-      const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
+      const playbackState = await spotifyDeviceManager.getCurrentPlayback();
       
-      if (response.status === 200) {
-        const data = await response.json();
-        setCurrentTrack(data.item);
-        setIsPlaying(true);
+      if (playbackState && playbackState.item) {
+        setCurrentTrack(playbackState.item);
+        setIsPlaying(playbackState.is_playing);
       }
     } catch (error) {
       console.error('Failed to play track:', error);
+      throw error; // Re-throw to allow components to handle the error
     }
   };
 
@@ -78,16 +66,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const accessToken = storageService.getAccessToken();
       if (!accessToken) throw new Error('Not authenticated');
 
-      await fetch('https://api.spotify.com/v1/me/player/pause', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-
+      await spotifyDeviceManager.pausePlayback();
       setIsPlaying(false);
     } catch (error) {
       console.error('Failed to pause track:', error);
+      throw error;
     }
   };
 
@@ -96,16 +79,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const accessToken = storageService.getAccessToken();
       if (!accessToken) throw new Error('Not authenticated');
 
-      await fetch('https://api.spotify.com/v1/me/player/play', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-
+      await spotifyDeviceManager.startPlaybackOnDevice(); // Resume without URI
       setIsPlaying(true);
     } catch (error) {
       console.error('Failed to resume track:', error);
+      throw error;
     }
   };
 

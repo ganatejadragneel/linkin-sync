@@ -198,7 +198,14 @@ export function UnifiedPlaylistDetail({ playlist, onBack }: UnifiedPlaylistDetai
           <div 
             key={track.id}
             className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-accent/5 rounded-lg transition-colors group cursor-pointer"
-            onClick={() => playTrack(track, tracks)}
+            onClick={async () => {
+              try {
+                await playTrack(track, tracks);
+              } catch (error) {
+                console.error('Failed to play track:', error);
+                setError(`Failed to play track: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              }
+            }}
           >
             <div className="col-span-1 flex items-center text-sm text-muted-foreground">
               <span className="group-hover:hidden">{index + 1}</span>

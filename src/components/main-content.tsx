@@ -175,8 +175,13 @@ export function MainContent({ searchQuery }: MainContentProps) {
     }
   };
 
-  const handleTrackPlay = (track: UnifiedTrack) => {
-    playTrack(track);
+  const handleTrackPlay = async (track: UnifiedTrack) => {
+    try {
+      await playTrack(track);
+    } catch (error) {
+      console.error('Failed to play track:', error);
+      setError(`Failed to play track: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   return (

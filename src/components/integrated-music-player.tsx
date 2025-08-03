@@ -204,21 +204,29 @@ export function IntegratedMusicPlayer({
   };
 
   // Navigate to previous track
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
     if (!currentTrack || playlist.length === 0) return;
     
     const currentIndex = playlist.findIndex(track => track.id === currentTrack.id);
     const previousIndex = currentIndex > 0 ? currentIndex - 1 : playlist.length - 1;
-    playTrack(playlist[previousIndex]);
+    try {
+      await playTrack(playlist[previousIndex]);
+    } catch (error) {
+      console.error('Failed to play previous track:', error);
+    }
   };
 
   // Navigate to next track
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!currentTrack || playlist.length === 0) return;
     
     const currentIndex = playlist.findIndex(track => track.id === currentTrack.id);
     const nextIndex = currentIndex < playlist.length - 1 ? currentIndex + 1 : 0;
-    playTrack(playlist[nextIndex]);
+    try {
+      await playTrack(playlist[nextIndex]);
+    } catch (error) {
+      console.error('Failed to play next track:', error);
+    }
   };
 
   // Handle volume change
