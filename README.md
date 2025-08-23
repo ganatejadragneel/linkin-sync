@@ -48,7 +48,7 @@ LinkinSync is a modern music streaming and social platform built with React, Typ
    ```
    REACT_APP_SPOTIFY_CLIENT_ID=your_spotify_client_id
    REACT_APP_SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-   REACT_APP_REDIRECT_URI=http://localhost:3000/callback
+   REACT_APP_SPOTIFY_REDIRECT_URI=http://localhost:3000/callback
    ```
 
 4. Start the development server

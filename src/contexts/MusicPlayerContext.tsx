@@ -45,8 +45,26 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
           trackUri = `spotify:track:${track.id}`;
         }
 
-        await spotifyDeviceManager.startPlaybackOnDevice(trackUri);
-        setIsPlaying(true);
+        try {
+          await spotifyDeviceManager.startPlaybackOnDevice(trackUri);
+          setIsPlaying(true);
+        } catch (playbackError: any) {
+          // Handle specific Spotify errors with helpful messages
+          if (playbackError.message?.includes('403')) {
+            if (playbackError.message?.includes('Restriction violated')) {
+              // Open track in Spotify as fallback
+              const spotifyUrl = `https://open.spotify.com/track/${track.id}`;
+              window.open(spotifyUrl, '_blank');
+              throw new Error('Playback restricted. This may require Spotify Premium or the track may not be available in your region. Opening in Spotify app instead.');
+            } else {
+              throw new Error('Playback failed: Permission denied. Please check your Spotify Premium subscription.');
+            }
+          } else if (playbackError.message?.includes('404')) {
+            throw new Error('Track not found. This song may no longer be available on Spotify.');
+          } else {
+            throw playbackError;
+          }
+        }
       } else {
         // For YouTube tracks, just set the state - actual playback would need YouTube integration
         console.log('YouTube playback not yet implemented through device manager');

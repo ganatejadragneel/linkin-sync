@@ -16,6 +16,7 @@ import {
   SpotifyPlaylistTracksResponse,
   SpotifyTopArtistsResponse,
   SpotifyRecentlyPlayedResponse,
+  SpotifySavedTracksResponse,
   UnifiedArtist,
 } from '../../types';
 
@@ -252,6 +253,41 @@ class SpotifyApiService extends BaseApiService {
       `/me/player/recently-played?limit=${limit}`
     );
     return response.data;
+  }
+
+  // Saved tracks (Liked Songs) endpoints
+  async getSavedTracks(limit = 50, offset = 0): Promise<SpotifySavedTracksResponse> {
+    const response = await this.get<SpotifySavedTracksResponse>(
+      `/me/tracks?limit=${limit}&offset=${offset}`
+    );
+    return response.data;
+  }
+
+  async getAllSavedTracks(): Promise<SpotifySavedTracksResponse> {
+    const firstBatch = await this.getSavedTracks(50, 0);
+    
+    // If there are more saved tracks, fetch them all
+    if (firstBatch.total > 50) {
+      const allTracks = [...firstBatch.items];
+      const totalPages = Math.ceil(firstBatch.total / 50);
+      
+      const remainingRequests = [];
+      for (let page = 1; page < totalPages; page++) {
+        remainingRequests.push(this.getSavedTracks(50, page * 50));
+      }
+      
+      const remainingBatches = await Promise.all(remainingRequests);
+      remainingBatches.forEach(batch => {
+        allTracks.push(...batch.items);
+      });
+      
+      return {
+        ...firstBatch,
+        items: allTracks,
+      };
+    }
+    
+    return firstBatch;
   }
 
   // Convert Spotify artist to unified format

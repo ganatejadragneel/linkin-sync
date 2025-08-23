@@ -8,8 +8,10 @@ import { spotifyApiService } from '../services/api/spotify.service';
 import { youtubeApiService } from '../services/api/youtube.service';
 import { UnifiedTrack } from '../types';
 import { useUnifiedPlaylists } from '../hooks/useUnifiedPlaylists';
-import { Loader2, Play, Music, Sparkles, Star, TrendingUp } from 'lucide-react';
+import { Loader2, Play, Music, Sparkles, Star, TrendingUp, Heart } from 'lucide-react';
 import { useMusicPlayer } from '../contexts/MusicPlayerContext';
+import { MoodRecommendations } from '../types/chat';
+import { MoodRecommendationCard } from './mood-recommendation-card';
 
 const albums = [
   {
@@ -58,11 +60,19 @@ const albums = [
 
 interface MainContentProps {
   searchQuery?: string;
-  searchType?: 'general' | 'song-request';
+  searchType?: 'general' | 'song-request' | 'mood-recommendations';
   isSearchingPlaylists?: boolean;
+  moodRecommendations?: MoodRecommendations | null;
+  detectedMood?: string;
 }
 
-export function MainContent({ searchQuery, searchType = 'general', isSearchingPlaylists = false }: MainContentProps) {
+export function MainContent({ 
+  searchQuery, 
+  searchType = 'general', 
+  isSearchingPlaylists = false, 
+  moodRecommendations = null, 
+  detectedMood = '' 
+}: MainContentProps) {
   const [selectedAlbum, setSelectedAlbum] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,21 +205,47 @@ export function MainContent({ searchQuery, searchType = 'general', isSearchingPl
           let playlistTracks: any[] = [];
           
           if (playlist.source === 'spotify') {
-            // Get Spotify playlist tracks
-            const tracksResponse = await spotifyApiService.getPlaylistTracks(playlist.id, 50);
-            playlistTracks = tracksResponse.items
-              .map(item => item.track)
-              .filter(track => track && track.name && track.artists);
+            // Check if this is the special "Liked Songs" playlist
+            if (playlist.id === 'spotify-liked-songs' && playlist.originalData?.isLikedSongs) {
+              // Use saved tracks data from the playlist's originalData
+              playlistTracks = playlist.originalData.savedTracks
+                .map((savedTrack: any) => savedTrack.track)
+                .filter((track: any) => track && track.name && track.artists);
+            } else {
+              // Get regular Spotify playlist tracks
+              const tracksResponse = await spotifyApiService.getPlaylistTracks(playlist.id, 50);
+              playlistTracks = tracksResponse.items
+                .map(item => item.track)
+                .filter(track => track && track.name && track.artists);
+            }
           } else if (playlist.source === 'youtube') {
-            // Get YouTube playlist tracks (if API supports it)
-            // TODO: Implement YouTube playlist tracks fetching if available
-            continue; // Skip for now
+            // Check if this is the special "Liked Videos" playlist
+            if (playlist.id === 'youtube-liked-videos' && playlist.originalData?.isLikedVideos) {
+              // Use liked videos data from the playlist's originalData
+              playlistTracks = playlist.originalData.likedVideos
+                .filter((video: any) => video && video.snippet?.title && video.snippet?.channelTitle);
+            } else {
+              // Get regular YouTube playlist tracks
+              const tracksResponse = await youtubeApiService.getUnifiedPlaylistTracks(playlist.id);
+              playlistTracks = tracksResponse.filter(track => track && track.name && track.artist);
+            }
           }
 
           // Search for matching tracks in this playlist
           const matchingTracks = playlistTracks.filter(track => {
-            const trackName = track.name.toLowerCase();
-            const artistName = track.artists[0]?.name?.toLowerCase() || '';
+            let trackName: string;
+            let artistName: string;
+            
+            if (playlist.source === 'spotify') {
+              trackName = track.name?.toLowerCase() || '';
+              artistName = track.artists?.[0]?.name?.toLowerCase() || '';
+            } else if (playlist.source === 'youtube') {
+              trackName = track.snippet?.title?.toLowerCase() || '';
+              artistName = track.snippet?.channelTitle?.toLowerCase() || '';
+            } else {
+              return false;
+            }
+            
             const searchLower = query.toLowerCase();
             
             // Fuzzy matching - check if search terms are contained in track name or artist
@@ -220,17 +256,28 @@ export function MainContent({ searchQuery, searchType = 'general', isSearchingPl
           });
 
           // Convert to UnifiedTrack format
-          const unifiedTracks: UnifiedTrack[] = matchingTracks.map(track => ({
-            id: track.id,
-            name: track.name,
-            artist: track.artists[0]?.name || 'Unknown Artist',
-            album: track.album?.name,
-            duration: track.duration_ms?.toString() || '0',
-            imageUrl: track.album?.images?.[0]?.url || null,
-            source: playlist.source as 'spotify' | 'youtube',
-            externalUrl: track.external_urls?.spotify || '',
-            originalData: { ...track, playlistName: playlist.name }, // Store playlist context in originalData
-          }));
+          const unifiedTracks: UnifiedTrack[] = matchingTracks.map(track => {
+            if (playlist.source === 'spotify') {
+              return {
+                id: track.id,
+                name: track.name,
+                artist: track.artists[0]?.name || 'Unknown Artist',
+                album: track.album?.name,
+                duration: track.duration_ms?.toString() || '0',
+                imageUrl: track.album?.images?.[0]?.url || null,
+                source: 'spotify' as const,
+                externalUrl: track.external_urls?.spotify || '',
+                originalData: { ...track, playlistName: playlist.name },
+              };
+            } else {
+              // YouTube video - convert and add playlist context
+              const convertedTrack = youtubeApiService.convertLikedVideoToUnifiedTrack(track);
+              return {
+                ...convertedTrack,
+                originalData: { ...convertedTrack.originalData, playlistName: playlist.name },
+              };
+            }
+          });
 
           results.push(...unifiedTracks);
         } catch (playlistError) {
@@ -271,14 +318,60 @@ export function MainContent({ searchQuery, searchType = 'general', isSearchingPl
   return (
     <div className="flex-1 p-6 bg-background text-foreground overflow-y-auto">
       <h2 className="text-xl font-bold mb-4 text-primary">
-        {searchQuery 
-          ? searchType === 'song-request' 
-            ? `Found songs for "${searchQuery}"` 
-            : `Results for "${searchQuery}"`
-          : 'Featured Content'
+        {searchType === 'mood-recommendations' 
+          ? `Songs for your ${detectedMood} mood`
+          : searchQuery 
+            ? searchType === 'song-request' 
+              ? `Found songs for "${searchQuery}"` 
+              : `Results for "${searchQuery}"`
+            : 'Featured Content'
         }
       </h2>
-      {searchQuery ? (
+      {searchType === 'mood-recommendations' ? (
+        // Mood Recommendations View
+        <div className="space-y-6">
+          {moodRecommendations && (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                <Heart className="w-5 h-5 text-primary" />
+                <span className="text-sm text-muted-foreground">
+                  Based on your emotional state, here are some songs that might resonate with you
+                </span>
+              </div>
+
+              {moodRecommendations.from_library && moodRecommendations.from_library.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-primary">From Your Library</h3>
+                  <div className="grid gap-3">
+                    {moodRecommendations.from_library.map((rec, idx) => (
+                      <MoodRecommendationCard 
+                        key={`lib-${idx}`} 
+                        recommendation={rec}
+                        showMatchReason={true}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {moodRecommendations.suggested && moodRecommendations.suggested.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-primary">Suggested For You</h3>
+                  <div className="grid gap-3">
+                    {moodRecommendations.suggested.map((rec, idx) => (
+                      <MoodRecommendationCard 
+                        key={`sug-${idx}`} 
+                        recommendation={rec}
+                        showMatchReason={true}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : searchQuery ? (
         // Search Results View
         <div className="space-y-4">
           {searchResults.map((track, index) => (

@@ -16,15 +16,18 @@ import { useSpotifyPlayer } from './components/spotify-web-player';
 import { AuthProvider } from './contexts/AuthContext';
 import { PlayerProvider } from './contexts/PlayerContext';
 import { MusicPlayerProvider } from './contexts/MusicPlayerContext';
+import { MoodRecommendations } from './types/chat';
 
 function App() {
-  const { isReady, error } = useSpotifyPlayer();
+  const { error } = useSpotifyPlayer();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('featured');
   const [searchQuery, setSearchQuery] = useState('');
   const [songSearchQuery, setSongSearchQuery] = useState('');
   const [isSearchingPlaylists, setIsSearchingPlaylists] = useState(false);
+  const [moodRecommendations, setMoodRecommendations] = useState<MoodRecommendations | null>(null);
+  const [detectedMood, setDetectedMood] = useState<string>('');
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
@@ -46,6 +49,13 @@ function App() {
     setActiveSection('song-results');
     setIsSearchingPlaylists(true);
     // TODO: Implement playlist search functionality
+  };
+
+  const handleMoodRecommendations = (recommendations: MoodRecommendations, mood: string) => {
+    console.log('Received mood recommendations:', recommendations, 'for mood:', mood);
+    setMoodRecommendations(recommendations);
+    setDetectedMood(mood);
+    setActiveSection('mood-recommendations');
   };
 
   // Check if we're on the callback routes
@@ -77,11 +87,17 @@ function App() {
               <main className={`flex-1 overflow-y-auto transition-all duration-300 ${
                 isChatOpen ? 'mr-64' : ''} ${isChatbotOpen ? 'mr-1/3' : ''
               }`}>
-                {(activeSection === 'featured' || activeSection === 'search' || activeSection === 'song-results') && 
+                {(activeSection === 'featured' || activeSection === 'search' || activeSection === 'song-results' || activeSection === 'mood-recommendations') && 
                   <MainContent 
                     searchQuery={activeSection === 'song-results' ? songSearchQuery : searchQuery} 
-                    searchType={activeSection === 'song-results' ? 'song-request' : 'general'}
+                    searchType={
+                      activeSection === 'song-results' ? 'song-request' : 
+                      activeSection === 'mood-recommendations' ? 'mood-recommendations' : 
+                      'general'
+                    }
                     isSearchingPlaylists={isSearchingPlaylists}
+                    moodRecommendations={moodRecommendations}
+                    detectedMood={detectedMood}
                   />
                 }
                 {activeSection === 'about' && <About />}
@@ -101,6 +117,7 @@ function App() {
               isOpen={isChatbotOpen} 
               onClose={() => setIsChatbotOpen(false)} 
               onSongRequest={handleSongRequest}
+              onMoodRecommendations={handleMoodRecommendations}
             />
             </div>
             <Toaster />

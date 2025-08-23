@@ -1,7 +1,7 @@
 // Base API service with common functionality
 
 import { API_CONFIG } from '../../constants';
-import { ApiError, ApiResponse } from '../../types';
+import { ApiResponse } from '../../types';
 
 export abstract class BaseApiService {
   protected baseUrl: string;

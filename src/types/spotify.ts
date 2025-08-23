@@ -172,6 +172,21 @@ export interface SpotifyRecentlyPlayedResponse {
   href: string;
 }
 
+export interface SpotifySavedTrack {
+  added_at: string;
+  track: SpotifyTrack;
+}
+
+export interface SpotifySavedTracksResponse {
+  href: string;
+  items: SpotifySavedTrack[];
+  limit: number;
+  next: string | null;
+  offset: number;
+  previous: string | null;
+  total: number;
+}
+
 export interface SpotifyError {
   error: {
     status: number;

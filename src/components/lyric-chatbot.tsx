@@ -2,24 +2,26 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { X, Send, Loader2, RefreshCw } from 'lucide-react';
+import { X, Send, Loader2, RefreshCw, Heart } from 'lucide-react';
 import { sendChatMessage, getNowPlaying } from '../services/lyricService';
-import { ChatResponse } from '../types/chat';
+import { MoodRecommendations } from '../types/chat';
 
 interface Message {
   id: number;
   sender: 'user' | 'bot';
   text: string;
   isLoading?: boolean;
+  moodDetected?: string;
 }
 
 interface LyricChatbotProps {
   isOpen: boolean;
   onClose: () => void;
   onSongRequest?: (query: string, artist?: string) => void;
+  onMoodRecommendations?: (recommendations: MoodRecommendations, mood: string) => void;
 }
 
-export function LyricChatbot({ isOpen, onClose, onSongRequest }: LyricChatbotProps) {
+export function LyricChatbot({ isOpen, onClose, onSongRequest, onMoodRecommendations }: LyricChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, sender: 'bot', text: "Hello! I'm your Lyric Assistant. I can help you understand the lyrics of the currently playing song. Ask me anything about the meaning, themes, or context of the song." },
   ]);
@@ -33,30 +35,33 @@ export function LyricChatbot({ isOpen, onClose, onSongRequest }: LyricChatbotPro
       console.log('Lyric Chat: Fetching current song...');
       const song = await getNowPlaying();
       console.log('Lyric Chat: Got song from backend:', song);
-      setCurrentSong(song);
       
-      // If we have a new song, add a message about it
-      if (song && (!currentSong || song.track_id !== currentSong.track_id)) {
-        console.log('Lyric Chat: Adding message for new song:', song.track_name);
-        setMessages(prev => [
-          ...prev,
-          { 
-            id: Date.now(), 
-            sender: 'bot', 
-            text: `I'm now ready to answer questions about "${song.track_name}" by ${song.artist}${song.source ? ` (${song.source})` : ''}.`
-          }
-        ]);
-      } else if (!song) {
-        console.log('Lyric Chat: No song currently playing');
-        setMessages(prev => [
-          ...prev,
-          { 
-            id: Date.now(), 
-            sender: 'bot', 
-            text: 'No song is currently playing. Please start playing a song to get lyrics analysis.'
-          }
-        ]);
-      }
+      // Check if we have a new song before updating state
+      setCurrentSong((prevSong: any) => {
+        // If we have a new song, add a message about it
+        if (song && (!prevSong || song.track_id !== prevSong.track_id)) {
+          console.log('Lyric Chat: Adding message for new song:', song.track_name);
+          setMessages(prev => [
+            ...prev,
+            { 
+              id: Date.now(), 
+              sender: 'bot', 
+              text: `I'm now ready to answer questions about "${song.track_name}" by ${song.artist}${song.source ? ` (${song.source})` : ''}.`
+            }
+          ]);
+        } else if (!song && prevSong) {
+          console.log('Lyric Chat: No song currently playing');
+          setMessages(prev => [
+            ...prev,
+            { 
+              id: Date.now(), 
+              sender: 'bot', 
+              text: 'No song is currently playing. Please start playing a song to get lyrics analysis.'
+            }
+          ]);
+        }
+        return song;
+      });
     } catch (error) {
       console.error('Lyric Chat: Error fetching current song:', error);
       setMessages(prev => [
@@ -68,7 +73,7 @@ export function LyricChatbot({ isOpen, onClose, onSongRequest }: LyricChatbotPro
         }
       ]);
     }
-  }, [currentSong]);
+  }, []); // Remove currentSong dependency to prevent infinite loop
 
   // Fetch the currently playing song when the component mounts or when opened
   useEffect(() => {
@@ -129,11 +134,23 @@ export function LyricChatbot({ isOpen, onClose, onSongRequest }: LyricChatbotPro
         onClose();
       }
       
+      // Check if this is a mood recommendation
+      if (response.type === 'mood_recommendation' && response.recommendations && response.mood_analysis && onMoodRecommendations) {
+        // Trigger mood recommendations display in main content
+        onMoodRecommendations(response.recommendations, response.mood_analysis.primary_mood);
+      }
+      
+      // Create the bot response message (without recommendations - they go to main content now)
+      const botResponse: Message = {
+        id: botLoadingMessageId,
+        sender: 'bot',
+        text: response.answer || response.error || "Sorry, I couldn't process that.",
+        moodDetected: response.mood_analysis?.primary_mood
+      };
+      
       // Replace loading message with actual response
       setMessages(prev => prev.map(msg => 
-        msg.id === botLoadingMessageId
-          ? { id: msg.id, sender: 'bot', text: response.answer || response.error || "Sorry, I couldn't process that." }
-          : msg
+        msg.id === botLoadingMessageId ? botResponse : msg
       ));
     } catch (error) {
       console.error('Failed to get response:', error);
@@ -202,9 +219,18 @@ export function LyricChatbot({ isOpen, onClose, onSongRequest }: LyricChatbotPro
                   <span>{message.text}</span>
                 </div>
               ) : (
-                <p className="whitespace-pre-line">{message.text}</p>
+                <>
+                  {message.moodDetected && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <Heart className="h-4 w-4" />
+                      <span className="text-sm font-medium">Mood detected: {message.moodDetected}</span>
+                    </div>
+                  )}
+                  <p className="whitespace-pre-line">{message.text}</p>
+                </>
               )}
             </div>
+            
           </div>
         ))}
       </ScrollArea>

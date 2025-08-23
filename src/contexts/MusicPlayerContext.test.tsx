@@ -1,12 +1,21 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MusicPlayerProvider, useMusicPlayer } from './MusicPlayerContext';
-import { UnifiedTrack } from '../types/youtube';
+import { UnifiedTrack } from '../types';
 
-// Mock the backend service
-jest.mock('../services/api', () => ({
-  backendApiService: {
-    sendNowPlaying: jest.fn(),
+// Mock the storage service
+jest.mock('../services/storage.service', () => ({
+  storageService: {
+    getAccessToken: jest.fn(() => 'mock_access_token'),
+    getRefreshToken: jest.fn(),
+    clearAuthData: jest.fn(),
+  },
+}));
+
+// Mock the spotify device manager
+jest.mock('../utils/spotify-device-manager', () => ({
+  spotifyDeviceManager: {
+    startPlaybackOnDevice: jest.fn(() => Promise.resolve()),
   },
 }));
 
@@ -31,7 +40,7 @@ function TestComponent() {
     duration: '240',
     imageUrl: 'https://test.image.url',
     externalUrl: 'https://spotify.com/test',
-    originalData: {}
+    originalData: { uri: 'spotify:track:test1' }
   };
 
   const testPlaylist: UnifiedTrack[] = [
@@ -45,7 +54,7 @@ function TestComponent() {
       duration: '180',
       imageUrl: 'https://test2.image.url',
       externalUrl: 'https://youtube.com/test2',
-      originalData: {}
+      originalData: { uri: 'youtube:video:test2' }
     }
   ];
 
@@ -69,6 +78,13 @@ function TestComponent() {
 describe('MusicPlayerContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Ensure mocks are set up properly for each test
+    const { storageService } = require('../services/storage.service');
+    const { spotifyDeviceManager } = require('../utils/spotify-device-manager');
+    
+    storageService.getAccessToken.mockReturnValue('mock_access_token');
+    spotifyDeviceManager.startPlaybackOnDevice.mockResolvedValue(undefined);
   });
 
   it('provides initial state', () => {
@@ -84,6 +100,9 @@ describe('MusicPlayerContext', () => {
   });
 
   it('plays a track and updates state', async () => {
+    const { spotifyDeviceManager } = require('../utils/spotify-device-manager');
+    spotifyDeviceManager.startPlaybackOnDevice.mockResolvedValue(undefined);
+
     render(
       <MusicPlayerProvider>
         <TestComponent />
@@ -97,9 +116,14 @@ describe('MusicPlayerContext', () => {
       expect(screen.getByTestId('playlist-length')).toHaveTextContent('2');
       expect(screen.getByTestId('is-playing')).toHaveTextContent('Playing');
     });
+
+    expect(spotifyDeviceManager.startPlaybackOnDevice).toHaveBeenCalledWith('spotify:track:test1');
   });
 
   it('plays next track in playlist', async () => {
+    const { spotifyDeviceManager } = require('../utils/spotify-device-manager');
+    spotifyDeviceManager.startPlaybackOnDevice.mockResolvedValue(undefined);
+
     render(
       <MusicPlayerProvider>
         <TestComponent />
@@ -122,6 +146,9 @@ describe('MusicPlayerContext', () => {
   });
 
   it('plays previous track in playlist', async () => {
+    const { spotifyDeviceManager } = require('../utils/spotify-device-manager');
+    spotifyDeviceManager.startPlaybackOnDevice.mockResolvedValue(undefined);
+
     render(
       <MusicPlayerProvider>
         <TestComponent />
@@ -147,6 +174,9 @@ describe('MusicPlayerContext', () => {
   });
 
   it('toggles play/pause state', async () => {
+    const { spotifyDeviceManager } = require('../utils/spotify-device-manager');
+    spotifyDeviceManager.startPlaybackOnDevice.mockResolvedValue(undefined);
+
     render(
       <MusicPlayerProvider>
         <TestComponent />
@@ -188,6 +218,9 @@ describe('MusicPlayerContext', () => {
   });
 
   it('loops to beginning when reaching end of playlist', async () => {
+    const { spotifyDeviceManager } = require('../utils/spotify-device-manager');
+    spotifyDeviceManager.startPlaybackOnDevice.mockResolvedValue(undefined);
+
     render(
       <MusicPlayerProvider>
         <TestComponent />
@@ -214,6 +247,9 @@ describe('MusicPlayerContext', () => {
   });
 
   it('loops to end when going previous from beginning', async () => {
+    const { spotifyDeviceManager } = require('../utils/spotify-device-manager');
+    spotifyDeviceManager.startPlaybackOnDevice.mockResolvedValue(undefined);
+
     render(
       <MusicPlayerProvider>
         <TestComponent />

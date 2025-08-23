@@ -38,41 +38,103 @@ export function UnifiedPlaylistDetail({ playlist, onBack }: UnifiedPlaylistDetai
         let unifiedTracks: UnifiedTrack[] = [];
 
         if (playlist.source === 'spotify') {
-          // Fetch Spotify tracks and convert to unified format
-          const response = await spotifyApiService.getPlaylistTracks(playlist.id, 50);
-          unifiedTracks = response.items
-            .filter(item => item.track) // Filter out null tracks
-            .map(item => {
-              const track = item.track;
-              return {
-                id: track.id,
-                name: track.name,
-                artist: track.artists.map(artist => artist.name).join(', '),
-                album: track.album.name,
-                duration: formatDuration(track.duration_ms),
-                imageUrl: track.album.images && track.album.images.length > 0 
-                  ? track.album.images[track.album.images.length - 1]?.url || null
-                  : null,
-                source: 'spotify' as const,
-                externalUrl: track.external_urls.spotify,
-                originalData: track,
-              };
-            });
+          // Check if this is the special "Liked Songs" playlist
+          if (playlist.id === 'spotify-liked-songs' && playlist.originalData?.isLikedSongs) {
+            // Use saved tracks data from the playlist's originalData
+            console.log('Loading Spotify Liked Songs from cached data');
+            if (!playlist.originalData.savedTracks || !Array.isArray(playlist.originalData.savedTracks)) {
+              throw new Error('Liked Songs data is not available. Please try refreshing the playlists.');
+            }
+            unifiedTracks = playlist.originalData.savedTracks
+              .filter((savedTrack: any) => savedTrack?.track) // Filter out invalid entries
+              .map((savedTrack: any) => {
+                const track = savedTrack.track;
+                return {
+                  id: track.id,
+                  name: track.name,
+                  artist: track.artists.map((artist: any) => artist.name).join(', '),
+                  album: track.album.name,
+                  duration: formatDuration(track.duration_ms),
+                  imageUrl: track.album.images && track.album.images.length > 0 
+                    ? track.album.images[track.album.images.length - 1]?.url || null
+                    : null,
+                  source: 'spotify' as const,
+                  externalUrl: track.external_urls.spotify,
+                  originalData: track,
+                };
+              });
+          } else {
+            // Fetch regular Spotify playlist tracks
+            console.log('Loading regular Spotify playlist tracks via API');
+            const response = await spotifyApiService.getPlaylistTracks(playlist.id, 50);
+            unifiedTracks = response.items
+              .filter(item => item.track) // Filter out null tracks
+              .map(item => {
+                const track = item.track;
+                return {
+                  id: track.id,
+                  name: track.name,
+                  artist: track.artists.map(artist => artist.name).join(', '),
+                  album: track.album.name,
+                  duration: formatDuration(track.duration_ms),
+                  imageUrl: track.album.images && track.album.images.length > 0 
+                    ? track.album.images[track.album.images.length - 1]?.url || null
+                    : null,
+                  source: 'spotify' as const,
+                  externalUrl: track.external_urls.spotify,
+                  originalData: track,
+                };
+              });
+          }
         } else if (playlist.source === 'youtube') {
-          // Fetch YouTube tracks (already in unified format)
-          unifiedTracks = await youtubeApiService.getUnifiedPlaylistTracks(playlist.id);
+          // Check if this is the special "Liked Videos" playlist
+          if (playlist.id === 'youtube-liked-videos' && playlist.originalData?.isLikedVideos) {
+            // Use liked videos data from the playlist's originalData
+            console.log('Loading YouTube Liked Videos from cached data');
+            if (!playlist.originalData.likedVideos || !Array.isArray(playlist.originalData.likedVideos)) {
+              throw new Error('Liked Videos data is not available. Please try refreshing the playlists.');
+            }
+            unifiedTracks = playlist.originalData.likedVideos
+              .filter((video: any) => video?.snippet?.title) // Filter out invalid entries
+              .map((video: any) => youtubeApiService.convertLikedVideoToUnifiedTrack(video));
+          } else {
+            // Fetch regular YouTube playlist tracks (already in unified format)
+            console.log('Loading regular YouTube playlist tracks via API');
+            unifiedTracks = await youtubeApiService.getUnifiedPlaylistTracks(playlist.id);
+          }
         }
 
         setTracks(unifiedTracks);
       } catch (err: any) {
-        setError(err.message || 'Failed to load playlist tracks');
+        console.error('Error loading playlist tracks:', err);
+        
+        // Handle different error types properly
+        let errorMessage = 'Failed to load playlist tracks';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        } else if (err && typeof err === 'object') {
+          // Handle API error objects
+          if (err.error && typeof err.error === 'string') {
+            errorMessage = err.error;
+          } else if (err.message && typeof err.message === 'string') {
+            errorMessage = err.message;
+          } else {
+            // Fallback for complex objects
+            errorMessage = 'An error occurred while loading tracks';
+            console.error('Complex error object:', err);
+          }
+        }
+        
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTracks();
-  }, [playlist.id, playlist.source]);
+  }, [playlist.id, playlist.source, playlist.originalData]);
 
   const formatDuration = (durationMs: number): string => {
     const minutes = Math.floor(durationMs / 60000);

@@ -67,15 +67,54 @@ export const useUnifiedPlaylists = (): UseUnifiedPlaylistsResult => {
     try {
       const promises: Promise<UnifiedPlaylist[]>[] = [];
 
-      // Fetch Spotify playlists if authenticated
+      // Fetch Spotify playlists and liked songs if authenticated
       if (isSpotifyAuthenticated) {
-        const spotifyPromise = spotifyApiService
-          .getAllUserPlaylists()
-          .then(response => response.items.map(convertSpotifyToUnified))
+        const spotifyPromise = Promise.allSettled([
+          spotifyApiService.getAllUserPlaylists(),
+          spotifyApiService.getAllSavedTracks()
+        ])
+          .then(([playlistsResult, savedTracksResult]) => {
+            const playlists: UnifiedPlaylist[] = [];
+            
+            // Handle playlists result
+            if (playlistsResult.status === 'fulfilled') {
+              playlists.push(...playlistsResult.value.items.map(convertSpotifyToUnified));
+            } else {
+              console.error('Failed to fetch Spotify playlists:', playlistsResult.reason);
+              handleError(playlistsResult.reason, { 
+                defaultMessage: 'Failed to load Spotify playlists',
+                showToast: false 
+              });
+            }
+            
+            // Handle saved tracks result
+            if (savedTracksResult.status === 'fulfilled' && savedTracksResult.value.items.length > 0) {
+              const likedSongsPlaylist: UnifiedPlaylist = {
+                id: 'spotify-liked-songs',
+                name: 'Liked Songs',
+                description: 'Your liked songs on Spotify',
+                imageUrl: null, // Spotify doesn't provide image for liked songs
+                trackCount: savedTracksResult.value.total,
+                owner: 'You',
+                source: 'spotify',
+                isPublic: false,
+                isCollaborative: false,
+                externalUrl: 'https://open.spotify.com/collection/tracks',
+                originalData: { isLikedSongs: true, savedTracks: savedTracksResult.value.items },
+              };
+              playlists.unshift(likedSongsPlaylist); // Add at the beginning for priority
+            } else if (savedTracksResult.status === 'rejected') {
+              console.error('Failed to fetch Spotify saved tracks:', savedTracksResult.reason);
+              // Don't show error for saved tracks - just continue without them
+              // This could happen if user doesn't have the new scope yet
+            }
+            
+            return playlists;
+          })
           .catch(error => {
-            console.error('Failed to fetch Spotify playlists:', error);
+            console.error('Unexpected error in Spotify data fetching:', error);
             handleError(error, { 
-              defaultMessage: 'Failed to load Spotify playlists',
+              defaultMessage: 'Failed to load Spotify data',
               showToast: false 
             });
             return [];
@@ -83,19 +122,62 @@ export const useUnifiedPlaylists = (): UseUnifiedPlaylistsResult => {
         promises.push(spotifyPromise);
       }
 
-      // Fetch YouTube Music playlists if authenticated
+      // Fetch YouTube Music playlists and liked videos if authenticated
       if (isYouTubeAuthenticated) {
-        console.log('YouTube Music is authenticated, fetching playlists...');
-        const youtubePromise = youtubeApiService
-          .getUnifiedPlaylists()
-          .then(playlists => {
-            console.log('YouTube Music playlists fetched:', playlists.length, 'playlists');
+        console.log('YouTube Music is authenticated, fetching playlists and liked videos...');
+        const youtubePromise = Promise.allSettled([
+          youtubeApiService.getUnifiedPlaylists(),
+          youtubeApiService.getLikedVideosForSearch()
+        ])
+          .then(([playlistsResult, likedVideosResult]) => {
+            const playlists: UnifiedPlaylist[] = [];
+            
+            // Handle playlists result
+            if (playlistsResult.status === 'fulfilled') {
+              playlists.push(...playlistsResult.value);
+              console.log('YouTube Music playlists fetched:', playlistsResult.value.length, 'playlists');
+            } else {
+              console.error('Failed to fetch YouTube playlists:', playlistsResult.reason);
+              handleError(playlistsResult.reason, { 
+                defaultMessage: 'Failed to load YouTube Music playlists',
+                showToast: false 
+              });
+            }
+            
+            // Handle liked videos result
+            if (likedVideosResult.status === 'fulfilled' && likedVideosResult.value.length > 0) {
+              const likedVideosPlaylist: UnifiedPlaylist = {
+                id: 'youtube-liked-videos',
+                name: 'Liked Videos',
+                description: 'Your liked videos on YouTube',
+                imageUrl: null, // YouTube doesn't provide image for liked videos
+                trackCount: likedVideosResult.value.length,
+                owner: 'You',
+                source: 'youtube',
+                isPublic: false,
+                isCollaborative: false,
+                externalUrl: 'https://www.youtube.com/playlist?list=LL',
+                originalData: { 
+                  isLikedVideos: true, 
+                  likedVideos: likedVideosResult.value,
+                  isComplete: true, // Search optimized version is always complete within limit
+                  isFromCache: false
+                },
+              };
+              playlists.unshift(likedVideosPlaylist); // Add at the beginning for priority
+              console.log('YouTube liked videos fetched:', likedVideosResult.value.length, 'videos');
+            } else if (likedVideosResult.status === 'rejected') {
+              console.error('Failed to fetch YouTube liked videos:', likedVideosResult.reason);
+              // Don't show error for liked videos - just continue without them
+              // This could happen if user doesn't have the required scope or quota exceeded
+            }
+            
             return playlists;
           })
           .catch(error => {
-            console.error('Failed to fetch YouTube playlists:', error);
+            console.error('Unexpected error in YouTube data fetching:', error);
             handleError(error, { 
-              defaultMessage: 'Failed to load YouTube Music playlists',
+              defaultMessage: 'Failed to load YouTube data',
               showToast: false 
             });
             return [];
@@ -109,10 +191,29 @@ export const useUnifiedPlaylists = (): UseUnifiedPlaylistsResult => {
       // Combine all playlists
       const allPlaylists = results.flat();
       
-      // Sort by name for consistent ordering
-      allPlaylists.sort((a, b) => a.name.localeCompare(b.name));
+      // Separate liked playlists from regular playlists
+      const likedPlaylists = allPlaylists.filter(playlist => 
+        playlist.id === 'spotify-liked-songs' || playlist.id === 'youtube-liked-videos'
+      );
+      const regularPlaylists = allPlaylists.filter(playlist => 
+        playlist.id !== 'spotify-liked-songs' && playlist.id !== 'youtube-liked-videos'
+      );
       
-      setPlaylists(allPlaylists);
+      // Sort regular playlists by name
+      regularPlaylists.sort((a, b) => a.name.localeCompare(b.name));
+      
+      // Sort liked playlists with consistent order: Spotify first, then YouTube
+      likedPlaylists.sort((a, b) => {
+        if (a.id === 'spotify-liked-songs') return -1;
+        if (b.id === 'spotify-liked-songs') return 1;
+        return 0;
+      });
+      
+      // Combine: liked playlists first, then regular playlists
+      const finalPlaylists = [...likedPlaylists, ...regularPlaylists];
+      
+      console.log(`Playlist ordering: ${likedPlaylists.length} liked playlists first, then ${regularPlaylists.length} regular playlists`);
+      setPlaylists(finalPlaylists);
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to load playlists';
       setError(errorMessage);

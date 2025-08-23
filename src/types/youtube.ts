@@ -166,6 +166,53 @@ export interface UnifiedTrack {
   originalData: any; // Store original data for source-specific operations
 }
 
+export interface YouTubeLikedVideo {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet: {
+    publishedAt: string;
+    channelId: string;
+    title: string;
+    description: string;
+    thumbnails: {
+      default?: YouTubeImage;
+      medium?: YouTubeImage;
+      high?: YouTubeImage;
+      standard?: YouTubeImage;
+      maxres?: YouTubeImage;
+    };
+    channelTitle: string;
+    categoryId?: string;
+    liveBroadcastContent?: string;
+    localized?: {
+      title: string;
+      description: string;
+    };
+  };
+  contentDetails?: {
+    duration: string;
+    dimension: string;
+    definition: string;
+    caption: string;
+    licensedContent: boolean;
+    contentRating: any;
+    projection: string;
+  };
+}
+
+export interface YouTubeLikedVideosResponse {
+  kind: string;
+  etag: string;
+  nextPageToken?: string;
+  prevPageToken?: string;
+  pageInfo: {
+    totalResults: number;
+    resultsPerPage: number;
+  };
+  items: YouTubeLikedVideo[];
+}
+
 export interface UnifiedArtist {
   id: string;
   name: string;
